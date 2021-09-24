@@ -8,5 +8,5 @@ import (
 
 func main() {
 	ctx := context.Background()
-	mtg.BuildGroup(ctx, nil, nil)
+	mtg.BuildGroup(ctx, nil)
 }

@@ -12,6 +12,7 @@ type Store interface {
 
 type Worker interface {
 	ProcessOutput()
+	ProcessCollectible()
 }
 
 type Configuration struct {
@@ -20,9 +21,19 @@ type Configuration struct {
 }
 
 type Group struct {
+	store   Store
+	workers []Worker
 }
 
-func BuildGroup(ctx context.Context, store Store, worker Worker) (*Group, error) {
+func BuildGroup(ctx context.Context, store Store) (*Group, error) {
+	grp := &Group{
+		store: store,
+	}
+	panic(grp)
+}
+
+func (grp *Group) AddWorker(wkr Worker) {
+	grp.workers = append(grp.workers, wkr)
 	panic(0)
 }
 
