@@ -8,9 +8,37 @@ import (
 	"github.com/gofrs/uuid"
 )
 
+const (
+	TransactionStateInitial = "initial"
+	TransactionStateDone    = "done"
+)
+
+type Transaction struct {
+	TraceId   string
+	State     string
+	AssetId   string
+	Receivers []string
+	Threshold int
+	Amount    string
+	Raw       []byte
+}
+
 type MixinExtraPack struct {
 	T uuid.UUID
 	M string `msgpack:",omitempty"`
+}
+
+func marshalTransation(tx *Transaction) []byte {
+	return common.MsgpackMarshalPanic(tx)
+}
+
+func parseTransaction(b []byte) *Transaction {
+	var tx Transaction
+	err := common.MsgpackUnmarshal(b, &tx)
+	if err != nil {
+		panic(err)
+	}
+	return &tx
 }
 
 func decodeTransactionOrPanic(s string) (*common.VersionedTransaction, *MixinExtraPack) {

@@ -2,23 +2,9 @@ package mtg
 
 import (
 	"context"
-	"time"
 
 	"github.com/fox-one/mixin-sdk-go"
 )
-
-type Store interface {
-	WriteOutput(utxo *mixin.MultisigUTXO) error
-	ReadOutput(utxoID string) (*mixin.MultisigUTXO, error)
-	ListOutputs(state string)
-	WriteTransaction(traceId string, raw []byte) error
-	ReadTransaction(traceId string) ([]byte, error)
-}
-
-type Worker interface {
-	ProcessOutput(context.Context, *mixin.MultisigUTXO)
-	ProcessCollectible()
-}
 
 type Configuration struct {
 	Members   []string
@@ -66,21 +52,21 @@ func (grp *Group) Run(ctx context.Context) {
 	grp.loop(ctx)
 }
 
-func (grp *Group) BuildTransaction(ctx context.Context, assetId string, receivers []string, threshold int, amount string, traceId string) ([]byte, error) {
+func (grp *Group) BuildTransaction(ctx context.Context, assetId string, receivers []string, threshold int, amount string, traceId string) error {
 	old, err := grp.store.ReadTransaction(traceId)
 	if err != nil || old != nil {
-		return old, err
+		return err
 	}
-	var raw []byte
-	err = grp.store.WriteTransaction(traceId, raw)
-	if err != nil {
-		return nil, err
+	tx := &Transaction{
+		TraceId:   traceId,
+		State:     TransactionStateInitial,
+		AssetId:   assetId,
+		Receivers: receivers,
+		Threshold: threshold,
+		Amount:    amount,
 	}
-	return raw, nil
-}
-
-func (grp *Group) SendCollectible(ctx context.Context, tokenId string, receivers []string, threshold int, traceId string) ([]byte, error) {
-	panic(0)
+	raw := marshalTransation(tx)
+	return grp.store.WriteTransaction(traceId, raw)
 }
 
 func (grp *Group) signTransaction(ctx context.Context, tx []byte) error {
@@ -91,65 +77,31 @@ func (grp *Group) loop(ctx context.Context) {
 	for {
 		grp.drainOutputs(ctx, 100)
 		grp.handleUnspentOutputs(ctx)
-		grp.buildTransactions(ctx)
+		grp.signTransactions(ctx)
 	}
 }
 
 func (grp *Group) handleUnspentOutputs(ctx context.Context) {
 }
 
-func (grp *Group) buildTransactions(ctx context.Context) {
-}
-
-func (grp *Group) drainOutputs(ctx context.Context, batch int) {
-	for {
-		checkpoint, err := grp.readOutputsCheckpoint(ctx)
-		if err != nil {
-			time.Sleep(3 * time.Second)
-			continue
-		}
-		outputs, err := grp.mixin.ReadMultisigOutputs(ctx, grp.members, uint8(grp.threshold), checkpoint, batch)
-		if err != nil {
-			time.Sleep(3 * time.Second)
-			continue
-		}
-		for _, out := range outputs {
-			switch out.State {
-			case mixin.UTXOStateSpent:
-				_, extra := decodeTransactionOrPanic(out.SignedTx)
-				err = grp.spendOutput(out, extra.T.String())
-			case mixin.UTXOStateSigned:
-				tx, extra := decodeTransactionOrPanic(out.SignedTx)
-				as := tx.AggregatedSignature
-				if as != nil && len(as.Signers) >= int(out.Threshold) {
-					out.State = mixin.UTXOStateSpent
-					err = grp.spendOutput(out, extra.T.String())
-				} else {
-					out.SignedBy = ""
-					out.SignedTx = ""
-					out.State = mixin.UTXOStateUnspent
-					err = grp.saveOutput(out)
-				}
-			case mixin.UTXOStateUnspent:
-				err = grp.saveOutput(out)
-			}
-			if err != nil {
-				break
-			}
-			checkpoint = out.UpdatedAt
-		}
-		grp.writeOutputsCheckpoint(ctx, checkpoint)
-		if len(outputs) < batch/2 {
-			break
-		}
-	}
-}
-
 func (grp *Group) spendOutput(out *mixin.MultisigUTXO, traceId string) error {
 	if out.State != mixin.UTXOStateSpent {
 		panic(out)
 	}
-	panic(0)
+	err := grp.store.WriteOutput(out)
+	if err != nil {
+		return err
+	}
+	b, err := grp.store.ReadTransaction(traceId)
+	if err != nil || b == nil {
+		return err
+	}
+	tx := parseTransaction(b)
+	if tx.State == TransactionStateDone {
+		return nil
+	}
+	tx.State = TransactionStateDone
+	return grp.store.WriteTransaction(traceId, marshalTransation(tx))
 }
 
 func (grp *Group) saveOutput(out *mixin.MultisigUTXO) error {
@@ -179,13 +131,5 @@ func (grp *Group) syncCollectibles(ctx context.Context) {
 }
 
 func (grp *Group) signCollectibles(ctx context.Context) {
-	panic(0)
-}
-
-func (grp *Group) readOutputsCheckpoint(ctx context.Context) (time.Time, error) {
-	panic(0)
-}
-
-func (grp *Group) writeOutputsCheckpoint(ctx context.Context, ckpt time.Time) error {
 	panic(0)
 }
