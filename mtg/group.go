@@ -23,24 +23,24 @@ type Group struct {
 }
 
 func BuildGroup(ctx context.Context, store Store, conf *Configuration) (*Group, error) {
-	if len(conf.Members) < conf.Threshold || conf.Threshold < 1 {
-		return nil, fmt.Errorf("invalid group threshold %d %d", len(conf.Members), conf.Threshold)
+	if cg := conf.Group; len(cg.Members) < cg.Threshold || cg.Threshold < 1 {
+		return nil, fmt.Errorf("invalid group threshold %d %d", len(cg.Members), cg.Threshold)
 	}
-	if !strings.Contains(strings.Join(conf.Members, ","), conf.ClientId) {
-		return nil, fmt.Errorf("app %s not belongs to the group", conf.ClientId)
+	if !strings.Contains(strings.Join(conf.Group.Members, ","), conf.App.ClientId) {
+		return nil, fmt.Errorf("app %s not belongs to the group", conf.App.ClientId)
 	}
 
 	s := &mixin.Keystore{
-		ClientID:   conf.ClientId,
-		SessionID:  conf.SessionId,
-		PrivateKey: conf.PrivateKey,
-		PinToken:   conf.PinToken,
+		ClientID:   conf.App.ClientId,
+		SessionID:  conf.App.SessionId,
+		PrivateKey: conf.App.PrivateKey,
+		PinToken:   conf.App.PinToken,
 	}
 	client, err := mixin.NewFromKeystore(s)
 	if err != nil {
 		return nil, err
 	}
-	err = client.VerifyPin(ctx, conf.PIN)
+	err = client.VerifyPin(ctx, conf.App.PIN)
 	if err != nil {
 		return nil, err
 	}
@@ -48,9 +48,9 @@ func BuildGroup(ctx context.Context, store Store, conf *Configuration) (*Group, 
 	grp := &Group{
 		mixin:     client,
 		store:     store,
-		members:   conf.Members,
-		threshold: conf.Threshold,
-		pin:       conf.PIN,
+		members:   conf.Group.Members,
+		threshold: conf.Group.Threshold,
+		pin:       conf.App.PIN,
 	}
 	return grp, nil
 }
