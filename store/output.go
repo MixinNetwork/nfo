@@ -15,9 +15,9 @@ const (
 	prefixOutputAsset       = "OUTPUT:ASSET:"
 )
 
-func (bs *BadgerStore) WriteOutput(utxo *mixin.MultisigUTXO) error {
+func (bs *BadgerStore) WriteOutput(utxo *mixin.MultisigUTXO, traceId string) error {
 	return bs.db.Update(func(txn *badger.Txn) error {
-		return bs.writeOutput(txn, utxo)
+		return bs.writeOutput(txn, utxo, traceId)
 	})
 }
 
@@ -28,10 +28,10 @@ func (bs *BadgerStore) ReadOutput(utxoID string) (*mixin.MultisigUTXO, error) {
 	return bs.readOutput(txn, utxoID)
 }
 
-func (bs *BadgerStore) WriteOutputs(utxos []*mixin.MultisigUTXO) error {
+func (bs *BadgerStore) WriteOutputs(utxos []*mixin.MultisigUTXO, traceId string) error {
 	return bs.db.Update(func(txn *badger.Txn) error {
 		for _, utxo := range utxos {
-			err := bs.writeOutput(txn, utxo)
+			err := bs.writeOutput(txn, utxo, traceId)
 			if err != nil {
 				return err
 			}
@@ -78,7 +78,7 @@ func (bs *BadgerStore) listOutputs(prefix string, limit int) ([]*mixin.MultisigU
 	return outputs, nil
 }
 
-func (bs *BadgerStore) writeOutput(txn *badger.Txn, utxo *mixin.MultisigUTXO) error {
+func (bs *BadgerStore) writeOutput(txn *badger.Txn, utxo *mixin.MultisigUTXO, traceId string) error {
 	val := common.MsgpackMarshalPanic(utxo)
 	key := []byte(prefixOutputPayload + utxo.UTXOID)
 	err := txn.Set(key, val)
@@ -86,13 +86,13 @@ func (bs *BadgerStore) writeOutput(txn *badger.Txn, utxo *mixin.MultisigUTXO) er
 		return err
 	}
 
-	key = buildOutputTimedKey(utxo, prefixOutputState)
+	key = buildOutputTimedKey(utxo, prefixOutputState, traceId)
 	err = txn.Set(key, []byte{1})
 	if err != nil {
 		return err
 	}
 
-	key = buildOutputTimedKey(utxo, prefixOutputAsset)
+	key = buildOutputTimedKey(utxo, prefixOutputAsset, traceId)
 	err = txn.Set(key, []byte{1})
 	if err != nil {
 		return err
@@ -101,7 +101,7 @@ func (bs *BadgerStore) writeOutput(txn *badger.Txn, utxo *mixin.MultisigUTXO) er
 	if utxo.SignedBy == "" {
 		return nil
 	}
-	key = buildOutputTimedKey(utxo, prefixOutputTransaction)
+	key = buildOutputTimedKey(utxo, prefixOutputTransaction, traceId)
 	return txn.Set(key, []byte{1})
 }
 
@@ -122,7 +122,7 @@ func (bs *BadgerStore) readOutput(txn *badger.Txn, id string) (*mixin.MultisigUT
 	return &utxo, err
 }
 
-func buildOutputTimedKey(out *mixin.MultisigUTXO, prefix string) []byte {
+func buildOutputTimedKey(out *mixin.MultisigUTXO, prefix string, traceId string) []byte {
 	buf := make([]byte, 8)
 	ts := out.UpdatedAt.UnixNano()
 	binary.BigEndian.PutUint64(buf, uint64(ts))
@@ -132,8 +132,7 @@ func buildOutputTimedKey(out *mixin.MultisigUTXO, prefix string) []byte {
 	case prefixOutputAsset:
 		prefix = prefix + out.State + out.AssetID
 	case prefixOutputTransaction:
-		prefix = prefix + out.State + out.SignedBy
-		panic("should use trace id here")
+		prefix = prefix + out.State + traceId
 	default:
 		panic(prefix)
 	}

@@ -145,7 +145,7 @@ func (grp *Group) signTransaction(ctx context.Context, tx *Transaction) ([]byte,
 		out.SignedBy = ver.AsLatestVersion().PayloadHash().String()
 		out.SignedTx = raw
 	}
-	err = grp.store.WriteOutputs(outputs)
+	err = grp.store.WriteOutputs(outputs, tx.TraceId)
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +189,7 @@ func (grp *Group) spendOutput(out *mixin.MultisigUTXO, traceId string) error {
 	if out.State != mixin.UTXOStateSpent {
 		panic(out)
 	}
-	err := grp.store.WriteOutput(out)
+	err := grp.store.WriteOutput(out, traceId)
 	if err != nil {
 		return err
 	}
@@ -216,7 +216,7 @@ func (grp *Group) saveOutput(out *mixin.MultisigUTXO) error {
 	if old != nil && old.UpdatedAt != out.UpdatedAt {
 		panic(old)
 	}
-	return grp.store.WriteOutput(out)
+	return grp.store.WriteOutput(out, "")
 }
 
 func (grp *Group) compactOutputs(ctx context.Context) {
