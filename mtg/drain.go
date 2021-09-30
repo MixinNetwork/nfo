@@ -2,10 +2,13 @@ package mtg
 
 import (
 	"context"
+	"encoding/binary"
 	"time"
 
 	"github.com/fox-one/mixin-sdk-go"
 )
+
+const outputsDrainingKey = "outputs-draining-checkpoint"
 
 func (grp *Group) drainOutputs(ctx context.Context, batch int) {
 	for {
@@ -54,9 +57,19 @@ func (grp *Group) drainOutputs(ctx context.Context, batch int) {
 }
 
 func (grp *Group) readOutputsDrainingCheckpoint(ctx context.Context) (time.Time, error) {
-	panic(0)
+	key := []byte(outputsDrainingKey)
+	val, err := grp.store.ReadProperty(key)
+	if err != nil || len(val) == 0 {
+		return time.Time{}, nil
+	}
+	ts := int64(binary.BigEndian.Uint64(val))
+	return time.Unix(0, ts), nil
 }
 
 func (grp *Group) writeOutputsDrainingCheckpoint(ctx context.Context, ckpt time.Time) error {
-	panic(0)
+	val := make([]byte, 8)
+	key := []byte(outputsDrainingKey)
+	ts := uint64(ckpt.UnixNano())
+	binary.BigEndian.PutUint64(val, ts)
+	return grp.store.WriteProperty(key, val)
 }

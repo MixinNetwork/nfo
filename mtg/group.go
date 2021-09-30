@@ -4,17 +4,13 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"strings"
 
 	"github.com/MixinNetwork/mixin/common"
 	"github.com/MixinNetwork/mixin/crypto"
 	"github.com/fox-one/mixin-sdk-go"
 	"github.com/shopspring/decimal"
 )
-
-type Configuration struct {
-	Members   []string
-	Threshold int
-}
 
 type Group struct {
 	mixin   *mixin.Client
@@ -23,38 +19,52 @@ type Group struct {
 
 	members   []string
 	threshold int
+	pin       string
 }
 
-func BuildGroup(ctx context.Context, store Store) (*Group, error) {
-	s := &mixin.Keystore{
-		ClientID:   "",
-		SessionID:  "",
-		PrivateKey: "",
-		PinToken:   "",
+func BuildGroup(ctx context.Context, store Store, conf *Configuration) (*Group, error) {
+	if len(conf.Members) < conf.Threshold || conf.Threshold < 1 {
+		return nil, fmt.Errorf("invalid group threshold %d %d", len(conf.Members), conf.Threshold)
+	}
+	if !strings.Contains(strings.Join(conf.Members, ","), conf.ClientId) {
+		return nil, fmt.Errorf("app %s not belongs to the group", conf.ClientId)
 	}
 
+	s := &mixin.Keystore{
+		ClientID:   conf.ClientId,
+		SessionID:  conf.SessionId,
+		PrivateKey: conf.PrivateKey,
+		PinToken:   conf.PinToken,
+	}
 	client, err := mixin.NewFromKeystore(s)
 	if err != nil {
 		return nil, err
 	}
-	grp := &Group{
-		mixin: client,
-		store: store,
+	err = client.VerifyPin(ctx, conf.PIN)
+	if err != nil {
+		return nil, err
 	}
-	panic(grp)
+
+	grp := &Group{
+		mixin:     client,
+		store:     store,
+		members:   conf.Members,
+		threshold: conf.Threshold,
+		pin:       conf.PIN,
+	}
+	return grp, nil
 }
 
 func (grp *Group) AddWorker(wkr Worker) {
 	grp.workers = append(grp.workers, wkr)
-	panic(0)
 }
 
 func (grp *Group) Run(ctx context.Context) {
-	go grp.signCollectibles(ctx)
-	go grp.syncCollectibles(ctx)
-	go grp.signTransactions(ctx)
-	go grp.compactOutputs(ctx)
-	grp.loop(ctx)
+	for {
+		grp.drainOutputs(ctx, 100)
+		grp.handleUnspentOutputs(ctx)
+		grp.signTransactions(ctx)
+	}
 }
 
 func (grp *Group) BuildTransaction(ctx context.Context, assetId string, receivers []string, threshold int, amount string, traceId string) error {
@@ -94,18 +104,15 @@ func (grp *Group) signTransaction(ctx context.Context, tx *Transaction) ([]byte,
 	if total.Cmp(common.NewIntegerFromString(tx.Amount)) < 0 {
 		return nil, fmt.Errorf("insufficient %s %s", total, tx.Amount)
 	}
-	inputs := []*mixin.GhostInput{
-		{
-			Receivers: tx.Receivers,
-			Index:     0,
-			Hint:      tx.TraceId,
-		},
-		{
-			Receivers: grp.members,
-			Index:     1,
-			Hint:      tx.TraceId,
-		},
-	}
+	inputs := []*mixin.GhostInput{{
+		Receivers: tx.Receivers,
+		Index:     0,
+		Hint:      tx.TraceId,
+	}, {
+		Receivers: grp.members,
+		Index:     1,
+		Hint:      tx.TraceId,
+	}}
 	keys, err := grp.mixin.BatchReadGhostKeys(ctx, inputs)
 	if err != nil {
 		return nil, err
@@ -116,17 +123,7 @@ func (grp *Group) signTransaction(ctx context.Context, tx *Transaction) ([]byte,
 		return nil, err
 	}
 	out := keys[0].DumpOutput(uint8(tx.Threshold), amount)
-	cout := &common.Output{
-		Type:   common.OutputTypeScript,
-		Amount: common.NewIntegerFromString(out.Amount.String()),
-		Script: common.Script(out.Script),
-		Mask:   crypto.Key(out.Mask),
-	}
-	for _, k := range out.Keys {
-		ck := crypto.Key(k)
-		cout.Keys = append(cout.Keys, &ck)
-	}
-	ver.Outputs = append(ver.Outputs, cout)
+	ver.Outputs = append(ver.Outputs, outputToMainnet(out))
 
 	if diff := total.Sub(common.NewIntegerFromString(tx.Amount)); diff.Sign() > 0 {
 		amount, err := decimal.NewFromString(diff.String())
@@ -134,17 +131,7 @@ func (grp *Group) signTransaction(ctx context.Context, tx *Transaction) ([]byte,
 			return nil, err
 		}
 		out := keys[0].DumpOutput(uint8(grp.threshold), amount)
-		cout := &common.Output{
-			Type:   common.OutputTypeScript,
-			Amount: common.NewIntegerFromString(out.Amount.String()),
-			Script: common.Script(out.Script),
-			Mask:   crypto.Key(out.Mask),
-		}
-		for _, k := range out.Keys {
-			ck := crypto.Key(k)
-			cout.Keys = append(cout.Keys, &ck)
-		}
-		ver.Outputs = append(ver.Outputs, cout)
+		ver.Outputs = append(ver.Outputs, outputToMainnet(out))
 	}
 
 	raw := hex.EncodeToString(ver.AsLatestVersion().Marshal())
@@ -163,19 +150,11 @@ func (grp *Group) signTransaction(ctx context.Context, tx *Transaction) ([]byte,
 		return nil, err
 	}
 
-	req, err = grp.mixin.SignMultisig(ctx, req.RequestID, "")
+	req, err = grp.mixin.SignMultisig(ctx, req.RequestID, grp.pin)
 	if err != nil {
 		return nil, err
 	}
 	return ver.AsLatestVersion().Marshal(), nil
-}
-
-func (grp *Group) loop(ctx context.Context) {
-	for {
-		grp.drainOutputs(ctx, 100)
-		grp.handleUnspentOutputs(ctx)
-		grp.signTransactions(ctx)
-	}
 }
 
 func (grp *Group) handleUnspentOutputs(ctx context.Context) error {
@@ -241,13 +220,5 @@ func (grp *Group) saveOutput(out *mixin.MultisigUTXO) error {
 }
 
 func (grp *Group) compactOutputs(ctx context.Context) {
-	panic(0)
-}
-
-func (grp *Group) syncCollectibles(ctx context.Context) {
-	panic(0)
-}
-
-func (grp *Group) signCollectibles(ctx context.Context) {
 	panic(0)
 }

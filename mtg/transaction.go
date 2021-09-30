@@ -5,6 +5,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/MixinNetwork/mixin/common"
+	"github.com/MixinNetwork/mixin/crypto"
+	"github.com/fox-one/mixin-sdk-go"
 	"github.com/gofrs/uuid"
 )
 
@@ -26,6 +28,20 @@ type Transaction struct {
 type MixinExtraPack struct {
 	T uuid.UUID
 	M string `msgpack:",omitempty"`
+}
+
+func outputToMainnet(out *mixin.Output) *common.Output {
+	cout := &common.Output{
+		Type:   common.OutputTypeScript,
+		Amount: common.NewIntegerFromString(out.Amount.String()),
+		Script: common.Script(out.Script),
+		Mask:   crypto.Key(out.Mask),
+	}
+	for _, k := range out.Keys {
+		ck := crypto.Key(k)
+		cout.Keys = append(cout.Keys, &ck)
+	}
+	return cout
 }
 
 func marshalTransation(tx *Transaction) []byte {
