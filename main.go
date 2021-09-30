@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/MixinNetwork/nfo/mtg"
+	"github.com/MixinNetwork/nfo/store"
 )
 
 func main() {
@@ -26,10 +27,11 @@ func main() {
 		panic(err)
 	}
 
-	db, err := OpenBadger(ctx, *bp)
+	db, err := store.OpenBadger(ctx, *bp)
 	if err != nil {
 		panic(err)
 	}
+	defer db.Close()
 
 	group, err := mtg.BuildGroup(ctx, db, conf)
 	if err != nil {

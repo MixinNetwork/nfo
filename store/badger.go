@@ -1,10 +1,9 @@
-package main
+package store
 
 import (
 	"context"
 
 	"github.com/dgraph-io/badger/v3"
-	"github.com/fox-one/mixin-sdk-go"
 )
 
 type BadgerStore struct {
@@ -17,6 +16,10 @@ func OpenBadger(ctx context.Context, path string) (*BadgerStore, error) {
 	return &BadgerStore{
 		db: db,
 	}, err
+}
+
+func (bs *BadgerStore) Close() error {
+	return bs.db.Close()
 }
 
 func (bs *BadgerStore) WriteProperty(key, val []byte) error {
@@ -35,30 +38,6 @@ func (bs *BadgerStore) ReadProperty(key []byte) ([]byte, error) {
 		return nil, err
 	}
 	return item.ValueCopy(nil)
-}
-
-func (bs *BadgerStore) WriteOutput(utxo *mixin.MultisigUTXO) error {
-	panic(0)
-}
-
-func (bs *BadgerStore) ReadOutput(utxoID string) (*mixin.MultisigUTXO, error) {
-	panic(0)
-}
-
-func (bs *BadgerStore) WriteOutputs(utxos []*mixin.MultisigUTXO) error {
-	panic(0)
-}
-
-func (bs *BadgerStore) ListOutputs(state string, limit int) ([]*mixin.MultisigUTXO, error) {
-	panic(0)
-}
-
-func (bs *BadgerStore) ListOutputsForTransaction(state, traceId string) ([]*mixin.MultisigUTXO, error) {
-	panic(0)
-}
-
-func (bs *BadgerStore) ListOutputsForAsset(state, assetId string, limit int) ([]*mixin.MultisigUTXO, error) {
-	panic(0)
 }
 
 func (bs *BadgerStore) WriteTransaction(traceId string, raw []byte) error {
