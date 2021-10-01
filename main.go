@@ -14,8 +14,8 @@ import (
 func main() {
 	ctx := context.Background()
 
-	bp := flag.String("d", "~/.mixin/data", "database directory path")
-	cp := flag.String("c", "~/.mixin/nfo.toml", "configuration file path")
+	bp := flag.String("d", "~/.mixin/nfo/data", "database directory path")
+	cp := flag.String("c", "~/.mixin/nfo/config.toml", "configuration file path")
 	flag.Parse()
 
 	if strings.HasPrefix(*cp, "~/") {
