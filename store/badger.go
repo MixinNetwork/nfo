@@ -39,15 +39,3 @@ func (bs *BadgerStore) ReadProperty(key []byte) ([]byte, error) {
 	}
 	return item.ValueCopy(nil)
 }
-
-func (bs *BadgerStore) WriteTransaction(traceId string, raw []byte) error {
-	panic(0)
-}
-
-func (bs *BadgerStore) ReadTransaction(traceId string) ([]byte, error) {
-	panic(0)
-}
-
-func (bs *BadgerStore) ListTransactions(state string, limit int) ([][]byte, error) {
-	panic(0)
-}

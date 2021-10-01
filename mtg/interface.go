@@ -18,9 +18,9 @@ type Store interface {
 	ListOutputsForTransaction(state, traceId string) ([]*mixin.MultisigUTXO, error)
 	ListOutputsForAsset(state, assetId string, limit int) ([]*mixin.MultisigUTXO, error)
 
-	WriteTransaction(traceId string, raw []byte) error
-	ReadTransaction(traceId string) ([]byte, error)
-	ListTransactions(state string, limit int) ([][]byte, error)
+	WriteTransaction(traceId string, tx *Transaction) error
+	ReadTransaction(traceId string) (*Transaction, error)
+	ListTransactions(state string, limit int) ([]*Transaction, error)
 }
 
 type Worker interface {

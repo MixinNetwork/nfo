@@ -74,14 +74,22 @@ func (bs *BadgerStore) listOutputs(prefix string, limit int) ([]*mixin.MultisigU
 			return nil, err
 		}
 		outputs = append(outputs, out)
+		if len(outputs) == limit {
+			break
+		}
 	}
 	return outputs, nil
 }
 
 func (bs *BadgerStore) writeOutput(txn *badger.Txn, utxo *mixin.MultisigUTXO, traceId string) error {
-	val := common.MsgpackMarshalPanic(utxo)
+	err := bs.resetOldOutput(txn, utxo, traceId)
+	if err != nil {
+		return err
+	}
+
 	key := []byte(prefixOutputPayload + utxo.UTXOID)
-	err := txn.Set(key, val)
+	val := common.MsgpackMarshalPanic(utxo)
+	err = txn.Set(key, val)
 	if err != nil {
 		return err
 	}
@@ -103,6 +111,37 @@ func (bs *BadgerStore) writeOutput(txn *badger.Txn, utxo *mixin.MultisigUTXO, tr
 	}
 	key = buildOutputTimedKey(utxo, prefixOutputTransaction, traceId)
 	return txn.Set(key, []byte{1})
+}
+
+func (bs *BadgerStore) resetOldOutput(txn *badger.Txn, utxo *mixin.MultisigUTXO, traceId string) error {
+	old, err := bs.readOutput(txn, utxo.UTXOID)
+	if err != nil || old == nil {
+		return err
+	}
+	if old.State == utxo.State {
+		return nil
+	}
+	if old.SignedBy != "" && old.SignedBy != utxo.SignedBy {
+		panic(old.SignedBy)
+	}
+
+	key := buildOutputTimedKey(old, prefixOutputState, traceId)
+	err = txn.Delete(key)
+	if err != nil {
+		return err
+	}
+
+	key = buildOutputTimedKey(old, prefixOutputAsset, traceId)
+	err = txn.Delete(key)
+	if err != nil {
+		return err
+	}
+
+	if old.SignedBy == "" {
+		return nil
+	}
+	key = buildOutputTimedKey(old, prefixOutputTransaction, traceId)
+	return txn.Delete(key)
 }
 
 func (bs *BadgerStore) readOutput(txn *badger.Txn, id string) (*mixin.MultisigUTXO, error) {

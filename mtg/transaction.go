@@ -2,6 +2,7 @@ package mtg
 
 import (
 	"encoding/hex"
+	"time"
 	"unicode/utf8"
 
 	"github.com/MixinNetwork/mixin/common"
@@ -23,6 +24,7 @@ type Transaction struct {
 	Threshold int
 	Amount    string
 	Raw       []byte
+	UpdatedAt time.Time
 }
 
 type MixinExtraPack struct {

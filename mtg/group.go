@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/MixinNetwork/mixin/common"
 	"github.com/MixinNetwork/mixin/crypto"
@@ -79,9 +80,9 @@ func (grp *Group) BuildTransaction(ctx context.Context, assetId string, receiver
 		Receivers: receivers,
 		Threshold: threshold,
 		Amount:    amount,
+		UpdatedAt: time.Now(),
 	}
-	raw := marshalTransation(tx)
-	return grp.store.WriteTransaction(traceId, raw)
+	return grp.store.WriteTransaction(traceId, tx)
 }
 
 func (grp *Group) signTransaction(ctx context.Context, tx *Transaction) ([]byte, error) {
@@ -175,14 +176,14 @@ func (grp *Group) signTransactions(ctx context.Context) error {
 	if err != nil || len(txs) != 1 {
 		return err
 	}
-	tx := parseTransaction(txs[0])
+	tx := txs[0]
 	raw, err := grp.signTransaction(ctx, tx)
 	if err != nil {
 		return err
 	}
 	tx.Raw = raw
-	raw = marshalTransation(tx)
-	return grp.store.WriteTransaction(tx.TraceId, raw)
+	tx.UpdatedAt = time.Now()
+	return grp.store.WriteTransaction(tx.TraceId, tx)
 }
 
 func (grp *Group) spendOutput(out *mixin.MultisigUTXO, traceId string) error {
@@ -193,16 +194,15 @@ func (grp *Group) spendOutput(out *mixin.MultisigUTXO, traceId string) error {
 	if err != nil {
 		return err
 	}
-	b, err := grp.store.ReadTransaction(traceId)
-	if err != nil || b == nil {
+	tx, err := grp.store.ReadTransaction(traceId)
+	if err != nil || tx == nil {
 		return err
 	}
-	tx := parseTransaction(b)
 	if tx.State == TransactionStateDone {
 		return nil
 	}
 	tx.State = TransactionStateDone
-	return grp.store.WriteTransaction(traceId, marshalTransation(tx))
+	return grp.store.WriteTransaction(traceId, tx)
 }
 
 func (grp *Group) saveOutput(out *mixin.MultisigUTXO) error {
