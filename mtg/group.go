@@ -65,6 +65,7 @@ func (grp *Group) Run(ctx context.Context) {
 		grp.drainOutputs(ctx, 100)
 		grp.handleUnspentOutputs(ctx)
 		grp.signTransactions(ctx)
+		grp.publishTransactions(ctx)
 	}
 }
 
@@ -184,6 +185,32 @@ func (grp *Group) signTransactions(ctx context.Context) error {
 	tx.Raw = raw
 	tx.UpdatedAt = time.Now()
 	return grp.store.WriteTransaction(tx.TraceId, tx)
+}
+
+func (grp *Group) publishTransactions(ctx context.Context) error {
+	txs, err := grp.store.ListTransactions(TransactionStateDone, 0)
+	if err != nil || len(txs) == 0 {
+		return err
+	}
+	for _, tx := range txs {
+		raw := hex.EncodeToString(tx.Raw)
+		h, err := grp.mixin.SendRawTransaction(ctx, raw)
+		if err != nil {
+			return err
+		}
+		s, err := grp.mixin.GetRawTransaction(ctx, *h)
+		if err != nil {
+			return err
+		}
+		if s.Snapshot == nil || !s.Snapshot.HasValue() {
+			continue
+		}
+		err = grp.store.DeleteTransaction(tx.TraceId)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (grp *Group) spendOutput(out *mixin.MultisigUTXO, traceId string) error {

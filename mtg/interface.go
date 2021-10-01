@@ -20,6 +20,7 @@ type Store interface {
 
 	WriteTransaction(traceId string, tx *Transaction) error
 	ReadTransaction(traceId string) (*Transaction, error)
+	DeleteTransaction(traceId string) error
 	ListTransactions(state string, limit int) ([]*Transaction, error)
 }
 
