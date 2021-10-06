@@ -37,6 +37,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	group.AddWorker(&ElectionWorker{})
 	group.AddWorker(&MintWorker{})
 	group.Run(ctx)
 }

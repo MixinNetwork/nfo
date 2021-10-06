@@ -10,6 +10,9 @@ type Store interface {
 	WriteProperty(key, val []byte) error
 	ReadProperty(key []byte) ([]byte, error)
 
+	WriteIteration(ir *Iteration) error
+	ListIterations() ([]*Iteration, error)
+
 	WriteOutput(utxo *mixin.MultisigUTXO, traceId string) error
 	ReadOutput(utxoID string) (*mixin.MultisigUTXO, error)
 	WriteOutputs(utxos []*mixin.MultisigUTXO, traceId string) error
