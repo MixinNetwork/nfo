@@ -19,15 +19,16 @@ type Group struct {
 	workers []Worker
 
 	members   []string
+	epoch     time.Time
 	threshold int
 	pin       string
 }
 
 func BuildGroup(ctx context.Context, store Store, conf *Configuration) (*Group, error) {
-	if cg := conf.Group; len(cg.Members) < cg.Threshold || cg.Threshold < 1 {
+	if cg := conf.Genesis; len(cg.Members) < cg.Threshold || cg.Threshold < 1 {
 		return nil, fmt.Errorf("invalid group threshold %d %d", len(cg.Members), cg.Threshold)
 	}
-	if !strings.Contains(strings.Join(conf.Group.Members, ","), conf.App.ClientId) {
+	if !strings.Contains(strings.Join(conf.Genesis.Members, ","), conf.App.ClientId) {
 		return nil, fmt.Errorf("app %s not belongs to the group", conf.App.ClientId)
 	}
 
@@ -47,12 +48,25 @@ func BuildGroup(ctx context.Context, store Store, conf *Configuration) (*Group, 
 	}
 
 	grp := &Group{
-		mixin:     client,
-		store:     store,
-		members:   conf.Group.Members,
-		threshold: conf.Group.Threshold,
-		pin:       conf.App.PIN,
+		mixin: client,
+		store: store,
+		pin:   conf.App.PIN,
 	}
+
+	for _, id := range conf.Genesis.Members {
+		ts := time.Unix(0, conf.Genesis.Timestamp)
+		err = grp.AddNode(id, conf.Genesis.Threshold, ts)
+		if err != nil {
+			return nil, err
+		}
+	}
+	members, threshold, epoch, err := grp.ListActiveNodes()
+	if err != nil {
+		return nil, err
+	}
+	grp.members = members
+	grp.threshold = threshold
+	grp.epoch = epoch
 	return grp, nil
 }
 

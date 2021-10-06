@@ -14,10 +14,11 @@ type Configuration struct {
 		PinToken   string `toml:"pin-token"`
 		PIN        string `toml:"pin"`
 	} `toml:"app"`
-	Group struct {
+	Genesis struct {
 		Members   []string `toml:"members"`
 		Threshold int      `toml:"threshold"`
-	}
+		Timestamp int64    `toml:"timestamp"`
+	} `toml:"genesis"`
 }
 
 func Setup(path string) (*Configuration, error) {

@@ -1,10 +1,11 @@
-[group]
+[genesis]
 members = [
   "eea900a8-b327-488c-8d8d-1428702fe240",
   "a0d752b2-df26-4703-9f78-e2960c56fd87",
   "a9780230-aca1-4f38-9170-cd9d476d0565",
 ]
 threshold = 2
+timestamp = 1613221058056658542
 
 [app]
 client-id = "eea900a8-b327-488c-8d8d-1428702fe240"
