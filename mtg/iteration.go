@@ -3,25 +3,48 @@ package mtg
 import "time"
 
 const (
-	IterationActionAdd    = "ADD"
-	IterationActionRemove = "REMOVE"
+	IterationActionAdd    = 11
+	IterationActionRemove = 12
 )
 
 type Iteration struct {
-	Action    string
+	Action    int
 	NodeId    string
 	Threshold int
 	CreatedAt time.Time
 }
 
 func (grp *Group) AddNode(id string, threshold int, timestamp time.Time) error {
-	panic(0)
+	ir := &Iteration{
+		Action:    IterationActionAdd,
+		NodeId:    id,
+		Threshold: threshold,
+		CreatedAt: timestamp,
+	}
+	return grp.store.WriteIteration(ir)
 }
 
 func (grp *Group) RemoveNode(id string, threshold int, timestamp time.Time) error {
-	panic(0)
+	ir := &Iteration{
+		Action:    IterationActionRemove,
+		NodeId:    id,
+		Threshold: threshold,
+		CreatedAt: timestamp,
+	}
+	return grp.store.WriteIteration(ir)
 }
 
 func (grp *Group) ListActiveNodes() ([]string, int, time.Time, error) {
-	panic(0)
+	irs, err := grp.store.ListIterations()
+	if err != nil || len(irs) == 0 {
+		return nil, 0, time.Time{}, err
+	}
+	var actives []string
+	for _, ir := range irs {
+		if ir.Action == IterationActionAdd {
+			actives = append(actives, ir.NodeId)
+		}
+	}
+	last := irs[len(irs)-1]
+	return actives, last.Threshold, last.CreatedAt, nil
 }
