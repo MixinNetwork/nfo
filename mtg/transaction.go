@@ -3,7 +3,6 @@ package mtg
 import (
 	"encoding/hex"
 	"time"
-	"unicode/utf8"
 
 	"github.com/MixinNetwork/mixin/common"
 	"github.com/MixinNetwork/mixin/crypto"
@@ -46,19 +45,6 @@ func outputToMainnet(out *mixin.Output) *common.Output {
 	return cout
 }
 
-func marshalTransation(tx *Transaction) []byte {
-	return common.MsgpackMarshalPanic(tx)
-}
-
-func parseTransaction(b []byte) *Transaction {
-	var tx Transaction
-	err := common.MsgpackUnmarshal(b, &tx)
-	if err != nil {
-		panic(err)
-	}
-	return &tx
-}
-
 func decodeTransactionOrPanic(s string) (*common.VersionedTransaction, *MixinExtraPack) {
 	raw, err := hex.DecodeString(s)
 	if err != nil {
@@ -82,24 +68,14 @@ func encodeMixinExtra(traceId, memo string) []byte {
 	}
 	p := &MixinExtraPack{T: id, M: memo}
 	b := common.MsgpackMarshalPanic(p)
-	if len(b) < common.ExtraSizeLimit {
-		return b
+	if len(b) >= common.ExtraSizeLimit {
+		panic(memo)
 	}
-	p.M = ""
-	return common.MsgpackMarshalPanic(p)
+	return b
 }
 
 func decodeMixinExtra(b []byte) *MixinExtraPack {
 	var p MixinExtraPack
-	err := common.MsgpackUnmarshal(b, &p)
-	if err == nil && (p.M != "" || p.T.String() != uuid.Nil.String()) {
-		return &p
-	}
-
-	if utf8.Valid(b) {
-		p.M = string(b)
-	} else {
-		p.M = hex.EncodeToString(b)
-	}
+	common.MsgpackUnmarshal(b, &p)
 	return &p
 }
