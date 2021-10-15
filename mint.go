@@ -9,6 +9,5 @@ import (
 type MintWorker struct {
 }
 
-func (mw *MintWorker) ProcessOutput(context.Context, *mixin.MultisigUTXO) {
-	panic(0)
+func (mw *MintWorker) ProcessOutput(ctx context.Context, out *mixin.MultisigUTXO) {
 }

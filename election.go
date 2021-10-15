@@ -10,5 +10,4 @@ type ElectionWorker struct {
 }
 
 func (ew *ElectionWorker) ProcessOutput(context.Context, *mixin.MultisigUTXO) {
-	panic(0)
 }
