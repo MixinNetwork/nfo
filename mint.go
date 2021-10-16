@@ -3,11 +3,11 @@ package main
 import (
 	"context"
 
-	"github.com/fox-one/mixin-sdk-go"
+	"github.com/MixinNetwork/nfo/mtg"
 )
 
 type MintWorker struct {
 }
 
-func (mw *MintWorker) ProcessOutput(ctx context.Context, out *mixin.MultisigUTXO) {
+func (mw *MintWorker) ProcessOutput(ctx context.Context, out *mtg.Output) {
 }

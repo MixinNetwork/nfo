@@ -2,8 +2,6 @@ package mtg
 
 import (
 	"context"
-
-	"github.com/fox-one/mixin-sdk-go"
 )
 
 type Store interface {
@@ -13,13 +11,13 @@ type Store interface {
 	WriteIteration(ir *Iteration) error
 	ListIterations() ([]*Iteration, error)
 
-	WriteOutput(utxo *mixin.MultisigUTXO, traceId string) error
-	ReadOutput(utxoID string) (*mixin.MultisigUTXO, error)
-	WriteOutputs(utxos []*mixin.MultisigUTXO, traceId string) error
+	WriteOutput(utxo *Output, traceId string) error
+	ReadOutput(utxoID string) (*Output, error)
+	WriteOutputs(utxos []*Output, traceId string) error
 
-	ListOutputs(state string, limit int) ([]*mixin.MultisigUTXO, error)
-	ListOutputsForTransaction(state, traceId string) ([]*mixin.MultisigUTXO, error)
-	ListOutputsForAsset(state, assetId string, limit int) ([]*mixin.MultisigUTXO, error)
+	ListOutputs(state string, limit int) ([]*Output, error)
+	ListOutputsForTransaction(state, traceId string) ([]*Output, error)
+	ListOutputsForAsset(state, assetId string, limit int) ([]*Output, error)
 
 	WriteTransaction(traceId string, tx *Transaction) error
 	ReadTransaction(traceId string) (*Transaction, error)
@@ -28,5 +26,5 @@ type Store interface {
 }
 
 type Worker interface {
-	ProcessOutput(context.Context, *mixin.MultisigUTXO)
+	ProcessOutput(context.Context, *Output)
 }

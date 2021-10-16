@@ -4,8 +4,8 @@ import (
 	"encoding/binary"
 
 	"github.com/MixinNetwork/mixin/common"
+	"github.com/MixinNetwork/nfo/mtg"
 	"github.com/dgraph-io/badger/v3"
-	"github.com/fox-one/mixin-sdk-go"
 )
 
 const (
@@ -15,20 +15,20 @@ const (
 	prefixOutputAsset       = "OUTPUT:ASSET:"
 )
 
-func (bs *BadgerStore) WriteOutput(utxo *mixin.MultisigUTXO, traceId string) error {
+func (bs *BadgerStore) WriteOutput(utxo *mtg.Output, traceId string) error {
 	return bs.db.Update(func(txn *badger.Txn) error {
 		return bs.writeOutput(txn, utxo, traceId)
 	})
 }
 
-func (bs *BadgerStore) ReadOutput(utxoID string) (*mixin.MultisigUTXO, error) {
+func (bs *BadgerStore) ReadOutput(utxoID string) (*mtg.Output, error) {
 	txn := bs.db.NewTransaction(false)
 	defer txn.Discard()
 
 	return bs.readOutput(txn, utxoID)
 }
 
-func (bs *BadgerStore) WriteOutputs(utxos []*mixin.MultisigUTXO, traceId string) error {
+func (bs *BadgerStore) WriteOutputs(utxos []*mtg.Output, traceId string) error {
 	return bs.db.Update(func(txn *badger.Txn) error {
 		for _, utxo := range utxos {
 			err := bs.writeOutput(txn, utxo, traceId)
@@ -40,22 +40,22 @@ func (bs *BadgerStore) WriteOutputs(utxos []*mixin.MultisigUTXO, traceId string)
 	})
 }
 
-func (bs *BadgerStore) ListOutputs(state string, limit int) ([]*mixin.MultisigUTXO, error) {
+func (bs *BadgerStore) ListOutputs(state string, limit int) ([]*mtg.Output, error) {
 	prefix := prefixOutputState + state
 	return bs.listOutputs(prefix, limit)
 }
 
-func (bs *BadgerStore) ListOutputsForTransaction(state, traceId string) ([]*mixin.MultisigUTXO, error) {
+func (bs *BadgerStore) ListOutputsForTransaction(state, traceId string) ([]*mtg.Output, error) {
 	prefix := prefixOutputTransaction + state + traceId
 	return bs.listOutputs(prefix, 0)
 }
 
-func (bs *BadgerStore) ListOutputsForAsset(state, assetId string, limit int) ([]*mixin.MultisigUTXO, error) {
+func (bs *BadgerStore) ListOutputsForAsset(state, assetId string, limit int) ([]*mtg.Output, error) {
 	prefix := prefixOutputAsset + state + assetId
 	return bs.listOutputs(prefix, limit)
 }
 
-func (bs *BadgerStore) listOutputs(prefix string, limit int) ([]*mixin.MultisigUTXO, error) {
+func (bs *BadgerStore) listOutputs(prefix string, limit int) ([]*mtg.Output, error) {
 	txn := bs.db.NewTransaction(false)
 	defer txn.Discard()
 
@@ -65,7 +65,7 @@ func (bs *BadgerStore) listOutputs(prefix string, limit int) ([]*mixin.MultisigU
 	it := txn.NewIterator(opts)
 	defer it.Close()
 
-	var outputs []*mixin.MultisigUTXO
+	var outputs []*mtg.Output
 	for it.Seek(opts.Prefix); it.Valid(); it.Next() {
 		key := it.Item().Key()
 		id := string(key[len(opts.Prefix)+8:])
@@ -81,7 +81,7 @@ func (bs *BadgerStore) listOutputs(prefix string, limit int) ([]*mixin.MultisigU
 	return outputs, nil
 }
 
-func (bs *BadgerStore) writeOutput(txn *badger.Txn, utxo *mixin.MultisigUTXO, traceId string) error {
+func (bs *BadgerStore) writeOutput(txn *badger.Txn, utxo *mtg.Output, traceId string) error {
 	err := bs.resetOldOutput(txn, utxo, traceId)
 	if err != nil {
 		return err
@@ -113,7 +113,7 @@ func (bs *BadgerStore) writeOutput(txn *badger.Txn, utxo *mixin.MultisigUTXO, tr
 	return txn.Set(key, []byte{1})
 }
 
-func (bs *BadgerStore) resetOldOutput(txn *badger.Txn, utxo *mixin.MultisigUTXO, traceId string) error {
+func (bs *BadgerStore) resetOldOutput(txn *badger.Txn, utxo *mtg.Output, traceId string) error {
 	old, err := bs.readOutput(txn, utxo.UTXOID)
 	if err != nil || old == nil {
 		return err
@@ -144,7 +144,7 @@ func (bs *BadgerStore) resetOldOutput(txn *badger.Txn, utxo *mixin.MultisigUTXO,
 	return txn.Delete(key)
 }
 
-func (bs *BadgerStore) readOutput(txn *badger.Txn, id string) (*mixin.MultisigUTXO, error) {
+func (bs *BadgerStore) readOutput(txn *badger.Txn, id string) (*mtg.Output, error) {
 	key := []byte(prefixOutputPayload + id)
 	item, err := txn.Get(key)
 	if err == badger.ErrKeyNotFound {
@@ -156,22 +156,22 @@ func (bs *BadgerStore) readOutput(txn *badger.Txn, id string) (*mixin.MultisigUT
 	if err != nil {
 		return nil, err
 	}
-	var utxo mixin.MultisigUTXO
+	var utxo mtg.Output
 	err = common.MsgpackUnmarshal(val, &utxo)
 	return &utxo, err
 }
 
-func buildOutputTimedKey(out *mixin.MultisigUTXO, prefix string, traceId string) []byte {
+func buildOutputTimedKey(out *mtg.Output, prefix string, traceId string) []byte {
 	buf := make([]byte, 8)
 	ts := out.UpdatedAt.UnixNano()
 	binary.BigEndian.PutUint64(buf, uint64(ts))
 	switch prefix {
 	case prefixOutputState:
-		prefix = prefix + out.State
+		prefix = prefix + out.StateName()
 	case prefixOutputAsset:
-		prefix = prefix + out.State + out.AssetID
+		prefix = prefix + out.StateName() + out.AssetID
 	case prefixOutputTransaction:
-		prefix = prefix + out.State + traceId
+		prefix = prefix + out.StateName() + traceId
 	default:
 		panic(prefix)
 	}
