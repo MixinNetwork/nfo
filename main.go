@@ -27,6 +27,10 @@ func main() {
 		panic(err)
 	}
 
+	if strings.HasPrefix(*bp, "~/") {
+		usr, _ := user.Current()
+		*bp = filepath.Join(usr.HomeDir, (*bp)[2:])
+	}
 	db, err := store.OpenBadger(ctx, *bp)
 	if err != nil {
 		panic(err)
