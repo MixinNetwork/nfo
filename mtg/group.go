@@ -230,41 +230,6 @@ func (grp *Group) publishTransactions(ctx context.Context) error {
 	return nil
 }
 
-func (grp *Group) spendOutput(utxo *mixin.MultisigUTXO, traceId string) error {
-	out := NewOutputFromMultisig(utxo)
-	if out.State != OutputStateSpent {
-		panic(out)
-	}
-	err := grp.store.WriteOutput(out, traceId)
-	if err != nil {
-		return err
-	}
-	tx, err := grp.store.ReadTransaction(traceId)
-	if err != nil || tx == nil {
-		return err
-	}
-	if tx.State == TransactionStateDone {
-		return nil
-	}
-	tx.State = TransactionStateDone
-	return grp.store.WriteTransaction(traceId, tx)
-}
-
-func (grp *Group) saveOutput(utxo *mixin.MultisigUTXO) error {
-	out := NewOutputFromMultisig(utxo)
-	if out.State != OutputStateUnspent {
-		panic(out)
-	}
-	old, err := grp.store.ReadOutput(out.UTXOID)
-	if err != nil {
-		return err
-	}
-	if old != nil && old.UpdatedAt != out.UpdatedAt {
-		panic(old)
-	}
-	return grp.store.WriteOutput(out, "")
-}
-
 func (grp *Group) compactOutputs(ctx context.Context) {
 	panic(0)
 }

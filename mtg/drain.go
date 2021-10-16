@@ -23,36 +23,78 @@ func (grp *Group) drainOutputs(ctx context.Context, batch int) {
 			continue
 		}
 
-		for _, out := range outputs {
-			switch out.State {
-			case mixin.UTXOStateSpent:
-				_, extra := decodeTransactionWithExtra(out.SignedTx)
-				err = grp.spendOutput(out, extra.T.String())
-			case mixin.UTXOStateSigned:
-				tx, extra := decodeTransactionWithExtra(out.SignedTx)
-				as := tx.AggregatedSignature
-				if as != nil && len(as.Signers) >= int(out.Threshold) {
-					out.State = mixin.UTXOStateSpent
-					err = grp.spendOutput(out, extra.T.String())
-				} else {
-					out.SignedBy = ""
-					out.SignedTx = ""
-					out.State = mixin.UTXOStateUnspent
-					err = grp.saveOutput(out)
-				}
-			case mixin.UTXOStateUnspent:
-				err = grp.saveOutput(out)
-			}
-			if err != nil {
-				break
-			}
-			checkpoint = out.UpdatedAt
-		}
+		checkpoint = grp.processMultisigOutputs(checkpoint, outputs)
 
 		grp.writeOutputsDrainingCheckpoint(ctx, checkpoint)
 		if len(outputs) < batch/2 {
 			break
 		}
+	}
+}
+
+func (grp *Group) processMultisigOutputs(checkpoint time.Time, outputs []*mixin.MultisigUTXO) time.Time {
+	for _, out := range outputs {
+		checkpoint = out.UpdatedAt
+		tx, extra := decodeTransactionWithExtra(out.SignedTx)
+		if out.SignedTx != "" && tx == nil {
+			continue
+		}
+		if tx == nil {
+			grp.saveOutput(out)
+			continue
+		}
+		as := tx.AggregatedSignature
+		if as != nil && len(as.Signers) >= int(out.Threshold) {
+			out.State = mixin.UTXOStateSpent
+			grp.spendOutput(out, extra.T.String())
+			continue
+		}
+		out.SignedBy = ""
+		out.SignedTx = ""
+		out.State = mixin.UTXOStateUnspent
+		grp.saveOutput(out)
+	}
+	return checkpoint
+}
+
+func (grp *Group) spendOutput(utxo *mixin.MultisigUTXO, traceId string) {
+	out := NewOutputFromMultisig(utxo)
+	if out.State != OutputStateSpent {
+		panic(out)
+	}
+	err := grp.store.WriteOutput(out, traceId)
+	if err != nil {
+		panic(err)
+	}
+	tx, err := grp.store.ReadTransaction(traceId)
+	if err != nil {
+		panic(err)
+	}
+	if tx == nil || tx.State == TransactionStateDone {
+		return
+	}
+	tx.State = TransactionStateDone
+	err = grp.store.WriteTransaction(traceId, tx)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (grp *Group) saveOutput(utxo *mixin.MultisigUTXO) {
+	out := NewOutputFromMultisig(utxo)
+	if out.State != OutputStateUnspent {
+		panic(out)
+	}
+	old, err := grp.store.ReadOutput(out.UTXOID)
+	if err != nil {
+		panic(err)
+	}
+	if old != nil && old.UpdatedAt != out.UpdatedAt {
+		panic(old)
+	}
+	err = grp.store.WriteOutput(out, "")
+	if err != nil {
+		panic(err)
 	}
 }
 
