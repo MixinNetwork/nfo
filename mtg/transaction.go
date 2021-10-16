@@ -35,6 +35,24 @@ type MixinExtraPack struct {
 	M string `msgpack:",omitempty"`
 }
 
+func (grp *Group) BuildTransaction(ctx context.Context, assetId string, receivers []string, threshold int, amount, memo string, traceId string) error {
+	old, err := grp.store.ReadTransaction(traceId)
+	if err != nil || old != nil {
+		return err
+	}
+	tx := &Transaction{
+		TraceId:   traceId,
+		State:     TransactionStateInitial,
+		AssetId:   assetId,
+		Receivers: receivers,
+		Threshold: threshold,
+		Amount:    amount,
+		Memo:      memo,
+		UpdatedAt: time.Now(),
+	}
+	return grp.store.WriteTransaction(traceId, tx)
+}
+
 func (grp *Group) signTransaction(ctx context.Context, tx *Transaction) ([]byte, error) {
 	outputs, err := grp.store.ListOutputsForTransaction(tx.TraceId)
 	if err != nil {

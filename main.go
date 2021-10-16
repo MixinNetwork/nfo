@@ -42,6 +42,6 @@ func main() {
 		panic(err)
 	}
 	group.AddWorker(&ElectionWorker{})
-	group.AddWorker(&MintWorker{})
+	group.AddWorker(&MintWorker{group})
 	group.Run(ctx)
 }
