@@ -8,6 +8,8 @@ import (
 	"github.com/dgraph-io/badger/v3"
 )
 
+// TODO the iterations queue should keep all action changes
+
 const (
 	prefixIterationPayload = "ITERATION:PAYLOAD:"
 	prefixIterationQueue   = "ITERATION:QUEUE:"
@@ -15,6 +17,13 @@ const (
 
 func (bs *BadgerStore) WriteIteration(ir *mtg.Iteration) error {
 	return bs.db.Update(func(txn *badger.Txn) error {
+		olds, err := bs.listIterations(txn)
+		if err != nil {
+			return err
+		}
+		if len(olds) > 0 && olds[len(olds)-1].CreatedAt.After(ir.CreatedAt) {
+			panic(ir.CreatedAt)
+		}
 		old, err := bs.readIteration(txn, ir.NodeId)
 		if err != nil {
 			return err
@@ -49,6 +58,10 @@ func (bs *BadgerStore) ListIterations() ([]*mtg.Iteration, error) {
 	txn := bs.db.NewTransaction(false)
 	defer txn.Discard()
 
+	return bs.listIterations(txn)
+}
+
+func (bs *BadgerStore) listIterations(txn *badger.Txn) ([]*mtg.Iteration, error) {
 	opts := badger.DefaultIteratorOptions
 	opts.PrefetchValues = false
 	opts.Prefix = []byte(prefixIterationQueue)
