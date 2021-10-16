@@ -45,8 +45,8 @@ func (bs *BadgerStore) ListOutputs(state string, limit int) ([]*mtg.Output, erro
 	return bs.listOutputs(prefix, limit)
 }
 
-func (bs *BadgerStore) ListOutputsForTransaction(state, traceId string) ([]*mtg.Output, error) {
-	prefix := prefixOutputTransaction + state + traceId
+func (bs *BadgerStore) ListOutputsForTransaction(traceId string) ([]*mtg.Output, error) {
+	prefix := prefixOutputTransaction + traceId
 	return bs.listOutputs(prefix, 0)
 }
 
@@ -106,7 +106,7 @@ func (bs *BadgerStore) writeOutput(txn *badger.Txn, utxo *mtg.Output, traceId st
 		return err
 	}
 
-	if utxo.SignedBy == "" {
+	if traceId == "" {
 		return nil
 	}
 	key = buildOutputTimedKey(utxo, prefixOutputTransaction, traceId)
@@ -120,6 +120,9 @@ func (bs *BadgerStore) resetOldOutput(txn *badger.Txn, utxo *mtg.Output, traceId
 	}
 	if old.State == utxo.State {
 		return nil
+	}
+	if old.State > utxo.State {
+		panic(old.State)
 	}
 	if old.SignedBy != "" && old.SignedBy != utxo.SignedBy {
 		panic(old.SignedBy)
@@ -137,9 +140,6 @@ func (bs *BadgerStore) resetOldOutput(txn *badger.Txn, utxo *mtg.Output, traceId
 		return err
 	}
 
-	if old.SignedBy == "" {
-		return nil
-	}
 	key = buildOutputTimedKey(old, prefixOutputTransaction, traceId)
 	return txn.Delete(key)
 }
@@ -171,7 +171,7 @@ func buildOutputTimedKey(out *mtg.Output, prefix string, traceId string) []byte 
 	case prefixOutputAsset:
 		prefix = prefix + out.StateName() + out.AssetID
 	case prefixOutputTransaction:
-		prefix = prefix + out.StateName() + traceId
+		prefix = prefix + traceId
 	default:
 		panic(prefix)
 	}

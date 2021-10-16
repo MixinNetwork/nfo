@@ -101,7 +101,7 @@ func (grp *Group) BuildTransaction(ctx context.Context, assetId string, receiver
 }
 
 func (grp *Group) signTransaction(ctx context.Context, tx *Transaction) ([]byte, error) {
-	outputs, err := grp.store.ListOutputsForTransaction(mixin.UTXOStateSigned, tx.TraceId)
+	outputs, err := grp.store.ListOutputsForTransaction(tx.TraceId)
 	if err != nil {
 		return nil, err
 	}

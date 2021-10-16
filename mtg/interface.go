@@ -16,7 +16,7 @@ type Store interface {
 	WriteOutputs(utxos []*Output, traceId string) error
 
 	ListOutputs(state string, limit int) ([]*Output, error)
-	ListOutputsForTransaction(state, traceId string) ([]*Output, error)
+	ListOutputsForTransaction(traceId string) ([]*Output, error)
 	ListOutputsForAsset(state, assetId string, limit int) ([]*Output, error)
 
 	WriteTransaction(traceId string, tx *Transaction) error
