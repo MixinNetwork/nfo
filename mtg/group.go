@@ -83,7 +83,7 @@ func (grp *Group) Run(ctx context.Context) {
 	}
 }
 
-func (grp *Group) BuildTransaction(ctx context.Context, assetId string, receivers []string, threshold int, amount string, traceId string) error {
+func (grp *Group) BuildTransaction(ctx context.Context, assetId string, receivers []string, threshold int, amount, memo string, traceId string) error {
 	old, err := grp.store.ReadTransaction(traceId)
 	if err != nil || old != nil {
 		return err
@@ -95,6 +95,7 @@ func (grp *Group) BuildTransaction(ctx context.Context, assetId string, receiver
 		Receivers: receivers,
 		Threshold: threshold,
 		Amount:    amount,
+		Memo:      memo,
 		UpdatedAt: time.Now(),
 	}
 	return grp.store.WriteTransaction(traceId, tx)
@@ -111,8 +112,10 @@ func (grp *Group) signTransaction(ctx context.Context, tx *Transaction) ([]byte,
 			return nil, err
 		}
 	}
-	var total common.Integer
 	ver := common.NewTransaction(crypto.NewHash([]byte(tx.AssetId)))
+	ver.Extra = encodeMixinExtra(tx.TraceId, tx.Memo)
+
+	var total common.Integer
 	for _, out := range outputs {
 		total = total.Add(common.NewIntegerFromString(out.Amount.String()))
 		ver.AddInput(crypto.Hash(out.TransactionHash), out.OutputIndex)
@@ -139,7 +142,7 @@ func (grp *Group) signTransaction(ctx context.Context, tx *Transaction) ([]byte,
 		return nil, err
 	}
 	out := keys[0].DumpOutput(uint8(tx.Threshold), amount)
-	ver.Outputs = append(ver.Outputs, outputToMainnet(out))
+	ver.Outputs = append(ver.Outputs, newCommonOutput(out))
 
 	if diff := total.Sub(common.NewIntegerFromString(tx.Amount)); diff.Sign() > 0 {
 		amount, err := decimal.NewFromString(diff.String())
@@ -147,7 +150,7 @@ func (grp *Group) signTransaction(ctx context.Context, tx *Transaction) ([]byte,
 			return nil, err
 		}
 		out := keys[0].DumpOutput(uint8(grp.threshold), amount)
-		ver.Outputs = append(ver.Outputs, outputToMainnet(out))
+		ver.Outputs = append(ver.Outputs, newCommonOutput(out))
 	}
 
 	raw := hex.EncodeToString(ver.AsLatestVersion().Marshal())

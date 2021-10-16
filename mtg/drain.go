@@ -26,10 +26,10 @@ func (grp *Group) drainOutputs(ctx context.Context, batch int) {
 		for _, out := range outputs {
 			switch out.State {
 			case mixin.UTXOStateSpent:
-				_, extra := decodeTransactionOrPanic(out.SignedTx)
+				_, extra := decodeTransactionWithExtra(out.SignedTx)
 				err = grp.spendOutput(out, extra.T.String())
 			case mixin.UTXOStateSigned:
-				tx, extra := decodeTransactionOrPanic(out.SignedTx)
+				tx, extra := decodeTransactionWithExtra(out.SignedTx)
 				as := tx.AggregatedSignature
 				if as != nil && len(as.Signers) >= int(out.Threshold) {
 					out.State = mixin.UTXOStateSpent

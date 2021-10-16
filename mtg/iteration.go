@@ -36,14 +36,14 @@ func (grp *Group) RemoveNode(id string, threshold int, timestamp time.Time) erro
 
 func (grp *Group) ListActiveNodes() ([]string, int, time.Time, error) {
 	irs, err := grp.store.ListIterations()
-	if err != nil || len(irs) == 0 {
-		return nil, 0, time.Time{}, err
-	}
 	var actives []string
 	for _, ir := range irs {
 		if ir.Action == IterationActionAdd {
 			actives = append(actives, ir.NodeId)
 		}
+	}
+	if err != nil || len(actives) == 0 {
+		return nil, 0, time.Time{}, err
 	}
 	last := irs[len(irs)-1]
 	return actives, last.Threshold, last.CreatedAt, nil

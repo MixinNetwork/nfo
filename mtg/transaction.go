@@ -22,6 +22,7 @@ type Transaction struct {
 	Receivers []string
 	Threshold int
 	Amount    string
+	Memo      string
 	Raw       []byte
 	UpdatedAt time.Time
 }
@@ -31,21 +32,7 @@ type MixinExtraPack struct {
 	M string `msgpack:",omitempty"`
 }
 
-func outputToMainnet(out *mixin.Output) *common.Output {
-	cout := &common.Output{
-		Type:   common.OutputTypeScript,
-		Amount: common.NewIntegerFromString(out.Amount.String()),
-		Script: common.Script(out.Script),
-		Mask:   crypto.Key(out.Mask),
-	}
-	for _, k := range out.Keys {
-		ck := crypto.Key(k)
-		cout.Keys = append(cout.Keys, &ck)
-	}
-	return cout
-}
-
-func decodeTransactionOrPanic(s string) (*common.VersionedTransaction, *MixinExtraPack) {
+func decodeTransactionWithExtra(s string) (*common.VersionedTransaction, *MixinExtraPack) {
 	raw, err := hex.DecodeString(s)
 	if err != nil {
 		panic(err)
@@ -54,11 +41,12 @@ func decodeTransactionOrPanic(s string) (*common.VersionedTransaction, *MixinExt
 	if err != nil {
 		panic(err)
 	}
-	extra := decodeMixinExtra(tx.Extra)
-	if extra.T.String() == uuid.Nil.String() {
+	var p MixinExtraPack
+	err = common.MsgpackUnmarshal(tx.Extra, &p)
+	if err != nil || p.T.String() == uuid.Nil.String() {
 		return nil, nil
 	}
-	return tx, extra
+	return tx, &p
 }
 
 func encodeMixinExtra(traceId, memo string) []byte {
@@ -74,8 +62,16 @@ func encodeMixinExtra(traceId, memo string) []byte {
 	return b
 }
 
-func decodeMixinExtra(b []byte) *MixinExtraPack {
-	var p MixinExtraPack
-	common.MsgpackUnmarshal(b, &p)
-	return &p
+func newCommonOutput(out *mixin.Output) *common.Output {
+	cout := &common.Output{
+		Type:   common.OutputTypeScript,
+		Amount: common.NewIntegerFromString(out.Amount.String()),
+		Script: common.Script(out.Script),
+		Mask:   crypto.Key(out.Mask),
+	}
+	for _, k := range out.Keys {
+		ck := crypto.Key(k)
+		cout.Keys = append(cout.Keys, &ck)
+	}
+	return cout
 }
