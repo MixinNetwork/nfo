@@ -2,6 +2,7 @@ package mtg
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"time"
@@ -70,7 +71,7 @@ func (grp *Group) signTransaction(ctx context.Context, tx *Transaction) ([]byte,
 	}
 
 	ver := common.NewTransaction(crypto.NewHash([]byte(tx.AssetId)))
-	ver.Extra = encodeMixinExtra(tx.TraceId, tx.Memo)
+	ver.Extra = []byte(EncodeMixinExtra(tx.TraceId, tx.Memo))
 
 	var total common.Integer
 	for _, out := range outputs {
@@ -142,25 +143,30 @@ func decodeTransactionWithExtra(s string) (*common.VersionedTransaction, *MixinE
 	if err != nil {
 		return nil, nil
 	}
+	extra, err := base64.RawURLEncoding.DecodeString(string(tx.Extra))
+	if err != nil {
+		return nil, nil
+	}
 	var p MixinExtraPack
-	err = common.MsgpackUnmarshal(tx.Extra, &p)
+	err = common.MsgpackUnmarshal(extra, &p)
 	if err != nil || p.T.String() == uuid.Nil.String() {
 		return nil, nil
 	}
 	return tx, &p
 }
 
-func encodeMixinExtra(traceId, memo string) []byte {
+func EncodeMixinExtra(traceId, memo string) string {
 	id, err := uuid.FromString(traceId)
 	if err != nil {
 		panic(err)
 	}
 	p := &MixinExtraPack{T: id, M: memo}
 	b := common.MsgpackMarshalPanic(p)
-	if len(b) >= common.ExtraSizeLimit {
+	s := base64.RawURLEncoding.EncodeToString(b)
+	if len(s) >= common.ExtraSizeLimit {
 		panic(memo)
 	}
-	return b
+	return s
 }
 
 func newCommonOutput(out *mixin.Output) *common.Output {
