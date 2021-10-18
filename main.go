@@ -41,7 +41,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	group.AddWorker(&ElectionWorker{})
-	group.AddWorker(&MintWorker{group})
+	rw := NewRefundWorker(ctx, group, conf)
+	group.AddWorker(rw)
 	group.Run(ctx)
 }

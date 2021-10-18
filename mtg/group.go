@@ -80,6 +80,14 @@ func (grp *Group) Run(ctx context.Context) {
 	}
 }
 
+func (grp *Group) GetMembers() []string {
+	return grp.members
+}
+
+func (grp *Group) GetThreshold() int {
+	return grp.threshold
+}
+
 func (grp *Group) handleUnspentOutputs(ctx context.Context) error {
 	outputs, err := grp.store.ListOutputs(mixin.UTXOStateUnspent, 16)
 	if err != nil {

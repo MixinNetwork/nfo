@@ -136,11 +136,11 @@ func (grp *Group) signTransaction(ctx context.Context, tx *Transaction) ([]byte,
 func decodeTransactionWithExtra(s string) (*common.VersionedTransaction, *MixinExtraPack) {
 	raw, err := hex.DecodeString(s)
 	if err != nil {
-		panic(err)
+		return nil, nil
 	}
 	tx, err := common.UnmarshalVersionedTransaction(raw)
 	if err != nil {
-		panic(err)
+		return nil, nil
 	}
 	var p MixinExtraPack
 	err = common.MsgpackUnmarshal(tx.Extra, &p)
