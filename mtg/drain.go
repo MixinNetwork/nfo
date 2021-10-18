@@ -89,7 +89,7 @@ func (grp *Group) saveOutput(utxo *mixin.MultisigUTXO) {
 	if err != nil {
 		panic(err)
 	}
-	if old != nil && old.UpdatedAt != out.UpdatedAt {
+	if old != nil && !old.UpdatedAt.Equal(out.UpdatedAt) {
 		panic(old)
 	}
 	err = grp.store.WriteOutput(out, "")
