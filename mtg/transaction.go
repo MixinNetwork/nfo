@@ -16,8 +16,9 @@ import (
 
 const (
 	TransactionStateInitial  = 10
-	TransactionStateSigned   = 11
-	TransactionStateSnapshot = 12
+	TransactionStateSigning  = 11
+	TransactionStateSigned   = 12
+	TransactionStateSnapshot = 13
 )
 
 type Transaction struct {
@@ -38,6 +39,15 @@ type MixinExtraPack struct {
 }
 
 func (grp *Group) BuildTransaction(ctx context.Context, assetId string, receivers []string, threshold int, amount, memo string, traceId string) error {
+	if threshold <= 0 || threshold > len(receivers) {
+		return fmt.Errorf("invalid receivers threshold %d/%d", threshold, len(receivers))
+	}
+	for _, r := range receivers {
+		id, _ := uuid.FromString(r)
+		if id.String() == uuid.Nil.String() {
+			return fmt.Errorf("invalid receiver %s", r)
+		}
+	}
 	old, err := grp.store.ReadTransaction(traceId)
 	if err != nil || old != nil {
 		return err

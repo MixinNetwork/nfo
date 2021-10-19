@@ -42,6 +42,9 @@ func NewRefundWorker(ctx context.Context, grp *mtg.Group, conf *mtg.Configuratio
 }
 
 func (rw *RefundWorker) ProcessOutput(ctx context.Context, out *mtg.Output) {
+	if out.Sender == "" || out.AssetID != CNBAssetID {
+		return
+	}
 	receivers := []string{out.Sender}
 	traceId := mixin.UniqueConversationID(out.UTXOID, "refund")
 	err := rw.grp.BuildTransaction(ctx, out.AssetID, receivers, 1, out.Amount.String(), "refund", traceId)

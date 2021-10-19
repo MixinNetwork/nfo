@@ -15,8 +15,8 @@ const (
 
 func (bs *BadgerStore) WriteTransaction(traceId string, tx *mtg.Transaction) error {
 	return bs.db.Update(func(txn *badger.Txn) error {
-		err := bs.resetOldTransaction(txn, tx)
-		if err != nil {
+		old, err := bs.resetOldTransaction(txn, tx)
+		if err != nil || old != nil {
 			return err
 		}
 		key := []byte(prefixTransactionPayload + tx.TraceId)
@@ -81,10 +81,13 @@ func (bs *BadgerStore) readTransaction(txn *badger.Txn, traceId string) (*mtg.Tr
 	return &tx, err
 }
 
-func (bs *BadgerStore) resetOldTransaction(txn *badger.Txn, tx *mtg.Transaction) error {
+func (bs *BadgerStore) resetOldTransaction(txn *badger.Txn, tx *mtg.Transaction) (*mtg.Transaction, error) {
 	old, err := bs.readTransaction(txn, tx.TraceId)
 	if err != nil || old == nil {
-		return err
+		return old, err
+	}
+	if old.State >= tx.State {
+		return old, nil
 	}
 
 	key := buildTransactionTimedKey(old)
@@ -92,7 +95,7 @@ func (bs *BadgerStore) resetOldTransaction(txn *badger.Txn, tx *mtg.Transaction)
 	if err != nil {
 		panic(key)
 	}
-	return txn.Delete(key)
+	return nil, txn.Delete(key)
 }
 
 func buildTransactionTimedKey(tx *mtg.Transaction) []byte {
@@ -109,6 +112,8 @@ func transactionStatePrefix(state int) string {
 	switch state {
 	case mtg.TransactionStateInitial:
 		return prefix + "initiall"
+	case mtg.TransactionStateSigning:
+		return prefix + "signingg"
 	case mtg.TransactionStateSigned:
 		return prefix + "signeddd"
 	case mtg.TransactionStateSnapshot:
