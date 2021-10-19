@@ -16,9 +16,8 @@ import (
 
 const (
 	TransactionStateInitial  = 10
-	TransactionStateSigning  = 11
-	TransactionStateSigned   = 12
-	TransactionStateSnapshot = 13
+	TransactionStateSigned   = 11
+	TransactionStateSnapshot = 12
 )
 
 type Transaction struct {
@@ -67,11 +66,41 @@ func (grp *Group) signTransaction(ctx context.Context, tx *Transaction) ([]byte,
 			return nil, err
 		}
 	}
-	if outputs[0].State != OutputStateUnspent {
-		tx, _ := decodeTransactionWithExtra(outputs[0].SignedTx)
-		return tx.Marshal(), nil
+
+	ver, _ := decodeTransactionWithExtra(outputs[0].SignedTx)
+	if ver == nil {
+		ver, err = grp.buildRawTransaction(ctx, tx, outputs)
+		if err != nil {
+			return nil, err
+		}
+	} else if ver.AggregatedSignature != nil {
+		return ver.Marshal(), nil
 	}
 
+	raw := hex.EncodeToString(ver.AsLatestVersion().Marshal())
+	req, err := grp.mixin.CreateMultisig(ctx, mixin.MultisigActionSign, raw)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, out := range outputs {
+		out.State = OutputStateSigned
+		out.SignedBy = ver.AsLatestVersion().PayloadHash().String()
+		out.SignedTx = raw
+	}
+	err = grp.store.WriteOutputs(outputs, tx.TraceId)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err = grp.mixin.SignMultisig(ctx, req.RequestID, grp.pin)
+	if err != nil {
+		return nil, err
+	}
+	return hex.DecodeString(req.RawTransaction)
+}
+
+func (grp *Group) buildRawTransaction(ctx context.Context, tx *Transaction, outputs []*Output) (*common.VersionedTransaction, error) {
 	ver := common.NewTransaction(crypto.NewHash([]byte(tx.AssetId)))
 	ver.Extra = []byte(encodeMixinExtra(tx.TraceId, tx.Memo))
 
@@ -113,27 +142,7 @@ func (grp *Group) signTransaction(ctx context.Context, tx *Transaction) ([]byte,
 		ver.Outputs = append(ver.Outputs, newCommonOutput(out))
 	}
 
-	raw := hex.EncodeToString(ver.AsLatestVersion().Marshal())
-	req, err := grp.mixin.CreateMultisig(ctx, mixin.MultisigActionSign, raw)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, out := range outputs {
-		out.State = OutputStateSigned
-		out.SignedBy = ver.AsLatestVersion().PayloadHash().String()
-		out.SignedTx = raw
-	}
-	err = grp.store.WriteOutputs(outputs, tx.TraceId)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err = grp.mixin.SignMultisig(ctx, req.RequestID, grp.pin)
-	if err != nil {
-		return nil, err
-	}
-	return ver.AsLatestVersion().Marshal(), nil
+	return ver.AsLatestVersion(), nil
 }
 
 func decodeTransactionWithExtra(s string) (*common.VersionedTransaction, *MixinExtraPack) {

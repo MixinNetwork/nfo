@@ -45,11 +45,10 @@ func (grp *Group) processMultisigOutputs(checkpoint time.Time, outputs []*mixin.
 		}
 		tx := &Transaction{
 			TraceId: extra.T.String(),
-			State:   TransactionStateSigning,
+			State:   TransactionStateInitial,
 			Raw:     ver.Marshal(),
 		}
-		as := ver.AggregatedSignature
-		if as != nil && len(as.Signers) >= int(out.Threshold) {
+		if ver.AggregatedSignature != nil {
 			out.State = mixin.UTXOStateSpent
 			tx.State = TransactionStateSigned
 		}

@@ -112,7 +112,6 @@ func (grp *Group) signTransactions(ctx context.Context) error {
 		return err
 	}
 	tx.Raw = raw
-	tx.State = TransactionStateSigning
 	tx.UpdatedAt = time.Now()
 	return grp.store.WriteTransaction(tx.TraceId, tx)
 }

@@ -86,11 +86,12 @@ func (bs *BadgerStore) resetOldTransaction(txn *badger.Txn, tx *mtg.Transaction)
 	if err != nil || old == nil {
 		return err
 	}
-	if old.State == tx.State {
-		return nil
-	}
 
 	key := buildTransactionTimedKey(old)
+	_, err = txn.Get(key)
+	if err != nil {
+		panic(key)
+	}
 	return txn.Delete(key)
 }
 
@@ -108,8 +109,6 @@ func transactionStatePrefix(state int) string {
 	switch state {
 	case mtg.TransactionStateInitial:
 		return prefix + "initiall"
-	case mtg.TransactionStateSigning:
-		return prefix + "signingl"
 	case mtg.TransactionStateSigned:
 		return prefix + "signeddd"
 	case mtg.TransactionStateSnapshot:
