@@ -89,7 +89,7 @@ func (grp *Group) GetThreshold() int {
 }
 
 func (grp *Group) handleUnspentOutputs(ctx context.Context) error {
-	outputs, err := grp.store.ListOutputs(mixin.UTXOStateUnspent, 16)
+	outputs, err := grp.store.ListActions(16)
 	if err != nil {
 		return err
 	}
@@ -97,6 +97,7 @@ func (grp *Group) handleUnspentOutputs(ctx context.Context) error {
 		for _, wkr := range grp.workers {
 			wkr.ProcessOutput(ctx, out)
 		}
+		grp.writeAction(out, ActionStateDone)
 	}
 	return nil
 }

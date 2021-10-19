@@ -19,6 +19,9 @@ type Store interface {
 	ListOutputsForTransaction(traceId string) ([]*Output, error)
 	ListOutputsForAsset(state, assetId string, limit int) ([]*Output, error)
 
+	WriteAction(act *Action) error
+	ListActions(limit int) ([]*Output, error)
+
 	WriteTransaction(traceId string, tx *Transaction) error
 	ReadTransaction(traceId string) (*Transaction, error)
 	ListTransactions(state int, limit int) ([]*Transaction, error)

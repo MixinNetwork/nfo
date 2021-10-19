@@ -54,6 +54,11 @@ func (grp *Group) processMultisigOutputs(checkpoint time.Time, outputs []*mixin.
 		}
 		grp.writeOutput(out, tx.TraceId, tx)
 	}
+
+	for _, utxo := range outputs {
+		out := NewOutputFromMultisig(utxo)
+		grp.writeAction(out, ActionStateInitial)
+	}
 	return checkpoint
 }
 
