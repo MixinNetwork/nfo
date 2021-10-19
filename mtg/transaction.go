@@ -15,13 +15,15 @@ import (
 )
 
 const (
-	TransactionStateInitial = "initial"
-	TransactionStateDone    = "done"
+	TransactionStateInitial  = 10
+	TransactionStateSigning  = 11
+	TransactionStateSigned   = 12
+	TransactionStateSnapshot = 13
 )
 
 type Transaction struct {
 	TraceId   string
-	State     string
+	State     int
 	AssetId   string
 	Receivers []string
 	Threshold int
@@ -65,13 +67,13 @@ func (grp *Group) signTransaction(ctx context.Context, tx *Transaction) ([]byte,
 			return nil, err
 		}
 	}
-	if outputs[0].State == OutputStateSpent {
+	if outputs[0].State != OutputStateUnspent {
 		tx, _ := decodeTransactionWithExtra(outputs[0].SignedTx)
 		return tx.Marshal(), nil
 	}
 
 	ver := common.NewTransaction(crypto.NewHash([]byte(tx.AssetId)))
-	ver.Extra = []byte(EncodeMixinExtra(tx.TraceId, tx.Memo))
+	ver.Extra = []byte(encodeMixinExtra(tx.TraceId, tx.Memo))
 
 	var total common.Integer
 	for _, out := range outputs {
@@ -155,7 +157,7 @@ func decodeTransactionWithExtra(s string) (*common.VersionedTransaction, *MixinE
 	return tx, &p
 }
 
-func EncodeMixinExtra(traceId, memo string) string {
+func encodeMixinExtra(traceId, memo string) string {
 	id, err := uuid.FromString(traceId)
 	if err != nil {
 		panic(err)

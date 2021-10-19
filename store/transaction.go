@@ -31,22 +31,6 @@ func (bs *BadgerStore) WriteTransaction(traceId string, tx *mtg.Transaction) err
 	})
 }
 
-func (bs *BadgerStore) DeleteTransaction(traceId string) error {
-	return bs.db.Update(func(txn *badger.Txn) error {
-		old, err := bs.readTransaction(txn, traceId)
-		if err != nil || old == nil {
-			return err
-		}
-		key := buildTransactionTimedKey(old)
-		err = txn.Delete(key)
-		if err != nil {
-			return err
-		}
-		key = []byte(prefixTransactionPayload + traceId)
-		return txn.Delete(key)
-	})
-}
-
 func (bs *BadgerStore) ReadTransaction(traceId string) (*mtg.Transaction, error) {
 	txn := bs.db.NewTransaction(false)
 	defer txn.Discard()
@@ -54,13 +38,13 @@ func (bs *BadgerStore) ReadTransaction(traceId string) (*mtg.Transaction, error)
 	return bs.readTransaction(txn, traceId)
 }
 
-func (bs *BadgerStore) ListTransactions(state string, limit int) ([]*mtg.Transaction, error) {
+func (bs *BadgerStore) ListTransactions(state int, limit int) ([]*mtg.Transaction, error) {
 	txn := bs.db.NewTransaction(false)
 	defer txn.Discard()
 
 	opts := badger.DefaultIteratorOptions
 	opts.PrefetchValues = false
-	opts.Prefix = []byte(prefixTransactionState + state)
+	opts.Prefix = []byte(transactionStatePrefix(state))
 	it := txn.NewIterator(opts)
 	defer it.Close()
 
@@ -114,7 +98,22 @@ func buildTransactionTimedKey(tx *mtg.Transaction) []byte {
 	buf := make([]byte, 8)
 	ts := tx.UpdatedAt.UnixNano()
 	binary.BigEndian.PutUint64(buf, uint64(ts))
-	prefix := prefixTransactionState + tx.State
+	prefix := transactionStatePrefix(tx.State)
 	key := append([]byte(prefix), buf...)
 	return append(key, []byte(tx.TraceId)...)
+}
+
+func transactionStatePrefix(state int) string {
+	prefix := prefixTransactionState
+	switch state {
+	case mtg.TransactionStateInitial:
+		return prefix + "initiall"
+	case mtg.TransactionStateSigning:
+		return prefix + "signingl"
+	case mtg.TransactionStateSigned:
+		return prefix + "signeddd"
+	case mtg.TransactionStateSnapshot:
+		return prefix + "snapshot"
+	}
+	panic(state)
 }

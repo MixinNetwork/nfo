@@ -112,12 +112,13 @@ func (grp *Group) signTransactions(ctx context.Context) error {
 		return err
 	}
 	tx.Raw = raw
+	tx.State = TransactionStateSigning
 	tx.UpdatedAt = time.Now()
 	return grp.store.WriteTransaction(tx.TraceId, tx)
 }
 
 func (grp *Group) publishTransactions(ctx context.Context) error {
-	txs, err := grp.store.ListTransactions(TransactionStateDone, 0)
+	txs, err := grp.store.ListTransactions(TransactionStateSigned, 0)
 	if err != nil || len(txs) == 0 {
 		return err
 	}
@@ -134,7 +135,8 @@ func (grp *Group) publishTransactions(ctx context.Context) error {
 		if s.Snapshot == nil || !s.Snapshot.HasValue() {
 			continue
 		}
-		err = grp.store.DeleteTransaction(tx.TraceId)
+		tx.State = TransactionStateSnapshot
+		err = grp.store.WriteTransaction(tx.TraceId, tx)
 		if err != nil {
 			return err
 		}
