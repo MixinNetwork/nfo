@@ -72,9 +72,12 @@ func (grp *Group) signTransaction(ctx context.Context, tx *Transaction) ([]byte,
 	}
 	if len(outputs) == 0 {
 		outputs, err = grp.store.ListOutputsForAsset(mixin.UTXOStateUnspent, tx.AssetId, 36)
-		if err != nil || len(outputs) == 0 {
-			return nil, err
-		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	if len(outputs) == 0 {
+		return nil, fmt.Errorf("empty outputs %s", tx.Amount)
 	}
 
 	ver, _ := decodeTransactionWithExtra(outputs[0].SignedTx)
