@@ -12,7 +12,6 @@ type Store interface {
 	ListIterations() ([]*Iteration, error)
 
 	WriteOutput(utxo *Output, traceId string) error
-	ReadOutput(utxoID string) (*Output, error)
 	WriteOutputs(utxos []*Output, traceId string) error
 
 	ListOutputs(state string, limit int) ([]*Output, error)
@@ -25,6 +24,13 @@ type Store interface {
 	WriteTransaction(traceId string, tx *Transaction) error
 	ReadTransaction(traceId string) (*Transaction, error)
 	ListTransactions(state int, limit int) ([]*Transaction, error)
+
+	WriteCollectibleOutput(utxo *CollectibleOutput, traceId string) error
+	ListCollectibleOutputsForTransaction(traceId string) ([]*CollectibleOutput, error)
+
+	WriteCollectibleTransaction(traceId string, tx *Transaction) error
+	ReadCollectibleTransaction(traceId string) (*Transaction, error)
+	ListCollectibleTransactions(state int, limit int) ([]*Transaction, error)
 }
 
 type Worker interface {

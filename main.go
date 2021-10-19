@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/MixinNetwork/nfo/mtg"
+	"github.com/MixinNetwork/nfo/nft"
 	"github.com/MixinNetwork/nfo/store"
 )
 
@@ -41,6 +42,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	mw := nft.NewMintWorker(group, db)
+	group.AddWorker(mw)
 	rw := NewRefundWorker(ctx, group, conf)
 	group.AddWorker(rw)
 	group.Run(ctx)

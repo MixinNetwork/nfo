@@ -1,4 +1,4 @@
-package main
+package nft
 
 import (
 	"context"
@@ -7,7 +7,15 @@ import (
 )
 
 type MintWorker struct {
-	grp *mtg.Group
+	grp   *mtg.Group
+	store Store
+}
+
+func NewMintWorker(grp *mtg.Group, store Store) *MintWorker {
+	return &MintWorker{
+		grp:   grp,
+		store: store,
+	}
 }
 
 func (mw *MintWorker) ProcessOutput(ctx context.Context, out *mtg.Output) {

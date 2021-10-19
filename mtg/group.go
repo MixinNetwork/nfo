@@ -72,9 +72,22 @@ func (grp *Group) AddWorker(wkr Worker) {
 }
 
 func (grp *Group) Run(ctx context.Context) {
+	go grp.loopCollectibles(ctx)
+	grp.loopMultsigis(ctx)
+}
+
+func (grp *Group) loopCollectibles(ctx context.Context) {
 	for {
-		grp.drainOutputs(ctx, 100)
-		grp.handleUnspentOutputs(ctx)
+		grp.drainCollectibleOutputsFromNetwork(ctx, 100)
+		grp.signCollectibleTransactions(ctx)
+		grp.publishCollectibleTransactions(ctx)
+	}
+}
+
+func (grp *Group) loopMultsigis(ctx context.Context) {
+	for {
+		grp.drainOutputsFromNetwork(ctx, 100)
+		grp.handleActionsQueue(ctx)
 		grp.signTransactions(ctx)
 		grp.publishTransactions(ctx)
 	}
@@ -88,7 +101,7 @@ func (grp *Group) GetThreshold() int {
 	return grp.threshold
 }
 
-func (grp *Group) handleUnspentOutputs(ctx context.Context) error {
+func (grp *Group) handleActionsQueue(ctx context.Context) error {
 	outputs, err := grp.store.ListActions(16)
 	if err != nil {
 		return err
@@ -147,4 +160,47 @@ func (grp *Group) publishTransactions(ctx context.Context) error {
 
 func (grp *Group) compactOutputs(ctx context.Context) {
 	panic(0)
+}
+
+func (grp *Group) signCollectibleTransactions(ctx context.Context) error {
+	txs, err := grp.store.ListCollectibleTransactions(TransactionStateInitial, 1)
+	if err != nil || len(txs) != 1 {
+		return err
+	}
+	tx := txs[0]
+	raw, err := grp.signCollectibleTransaction(ctx, tx)
+	if err != nil {
+		return err
+	}
+	tx.Raw = raw
+	tx.UpdatedAt = time.Now()
+	tx.State = TransactionStateSigning
+	return grp.store.WriteCollectibleTransaction(tx.TraceId, tx)
+}
+
+func (grp *Group) publishCollectibleTransactions(ctx context.Context) error {
+	txs, err := grp.store.ListCollectibleTransactions(TransactionStateSigned, 0)
+	if err != nil || len(txs) == 0 {
+		return err
+	}
+	for _, tx := range txs {
+		raw := hex.EncodeToString(tx.Raw)
+		h, err := grp.mixin.SendRawTransaction(ctx, raw)
+		if err != nil {
+			return err
+		}
+		s, err := grp.mixin.GetRawTransaction(ctx, *h)
+		if err != nil {
+			return err
+		}
+		if s.Snapshot == nil || !s.Snapshot.HasValue() {
+			continue
+		}
+		tx.State = TransactionStateSnapshot
+		err = grp.store.WriteCollectibleTransaction(tx.TraceId, tx)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

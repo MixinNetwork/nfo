@@ -21,13 +21,6 @@ func (bs *BadgerStore) WriteOutput(utxo *mtg.Output, traceId string) error {
 	})
 }
 
-func (bs *BadgerStore) ReadOutput(utxoID string) (*mtg.Output, error) {
-	txn := bs.db.NewTransaction(false)
-	defer txn.Discard()
-
-	return bs.readOutput(txn, utxoID)
-}
-
 func (bs *BadgerStore) WriteOutputs(utxos []*mtg.Output, traceId string) error {
 	return bs.db.Update(func(txn *badger.Txn) error {
 		for _, utxo := range utxos {
