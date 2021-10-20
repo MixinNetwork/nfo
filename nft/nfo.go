@@ -148,13 +148,22 @@ func DecodeNFOMemo(b []byte) (*NFOMemo, error) {
 		if err != nil {
 			return nil, err
 		}
+		if nm.Mask != 1 {
+			return nil, fmt.Errorf("invalid mask %v", nm.Indexes())
+		}
 		nm.Chain, err = nr.readUUID()
 		if err != nil {
 			return nil, err
 		}
+		if nm.Chain != NMDefaultChain {
+			return nil, fmt.Errorf("invalid chain %s", nm.Chain.String())
+		}
 		nm.Class, err = nr.readBytes()
 		if err != nil {
 			return nil, err
+		}
+		if bytes.Compare(nm.Class, NMDefaultClass) != 0 {
+			return nil, fmt.Errorf("invalid class %s", hex.EncodeToString(nm.Class))
 		}
 		nm.Group, err = nr.readBytes()
 		if err != nil {

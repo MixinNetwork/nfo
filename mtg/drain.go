@@ -130,6 +130,10 @@ func (grp *Group) drainCollectibleOutputsFromNetwork(ctx context.Context, batch 
 func (grp *Group) processCollectibleOutputs(checkpoint time.Time, outputs []*CollectibleOutput) time.Time {
 	for _, out := range outputs {
 		checkpoint = out.UpdatedAt
+		if out.TokenId != CollectibleMetaTokenId {
+			continue
+		}
+
 		ver, extra := decodeTransactionWithExtra(out.SignedTx)
 		if out.SignedTx != "" && ver == nil {
 			panic(out.SignedTx)
