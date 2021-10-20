@@ -7,8 +7,11 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/MixinNetwork/mixin/crypto"
 	"github.com/MixinNetwork/nfo/mtg"
+	"github.com/MixinNetwork/nfo/nft"
 	"github.com/fox-one/mixin-sdk-go"
+	"github.com/gofrs/uuid"
 	"github.com/shopspring/decimal"
 )
 
@@ -65,18 +68,26 @@ func (rw *RefundWorker) loop(ctx context.Context) {
 }
 
 func (rw *RefundWorker) OnMessage(ctx context.Context, msg *mixin.MessageView, userId string) error {
-	if msg.Category != mixin.MessageCategoryPlainText {
+	code := "mixin://codes/"
+	if msg.Category == mixin.MessageCategoryPlainSticker {
+		pid, err := rw.handleMintMessage(ctx, msg.MessageID)
+		if err != nil {
+			return nil
+		}
+		code = code + pid
+	} else if msg.Category == mixin.MessageCategoryPlainText {
+		pid, err := rw.handleRefundMessage(ctx, msg.MessageID)
+		if err != nil {
+			return nil
+		}
+		code = code + pid
+	} else {
 		return nil
 	}
-	pid, err := rw.handleMessage(ctx, msg.MessageID)
-	if err != nil {
-		return nil
-	}
-	code := "mixin://codes/" + pid
 	mr := &mixin.MessageRequest{
 		ConversationID: msg.ConversationID,
 		Category:       mixin.MessageCategoryPlainText,
-		MessageID:      mixin.UniqueConversationID(pid, pid),
+		MessageID:      mixin.UniqueConversationID(code, code),
 		Data:           base64.RawURLEncoding.EncodeToString([]byte(code)),
 	}
 	return rw.client.SendMessage(ctx, mr)
@@ -86,7 +97,33 @@ func (rw *RefundWorker) OnAckReceipt(ctx context.Context, msg *mixin.MessageView
 	return nil
 }
 
-func (rw *RefundWorker) handleMessage(ctx context.Context, msgId string) (string, error) {
+func (rw *RefundWorker) handleMintMessage(ctx context.Context, msgId string) (string, error) {
+	amount, err := decimal.NewFromString(nft.MintMinimumCost)
+	if err != nil {
+		return "", err
+	}
+	mid, err := uuid.FromString(msgId)
+	if err != nil {
+		return "", err
+	}
+	contentHash := crypto.NewHash([]byte("TEST:" + msgId))
+	nfo := nft.BuildMintNFO(nft.NMDefaultGroupKey, mid.Bytes(), contentHash)
+	pr := mixin.TransferInput{
+		AssetID: nft.MintAssetId,
+		Amount:  amount,
+		TraceID: msgId,
+		Memo:    base64.RawURLEncoding.EncodeToString(nfo),
+	}
+	pr.OpponentMultisig.Receivers = rw.grp.GetMembers()
+	pr.OpponentMultisig.Threshold = uint8(rw.grp.GetThreshold())
+	payment, err := rw.client.VerifyPayment(ctx, pr)
+	if err != nil {
+		return "", err
+	}
+	return payment.CodeID, nil
+}
+
+func (rw *RefundWorker) handleRefundMessage(ctx context.Context, msgId string) (string, error) {
 	amount, err := decimal.NewFromString(fmt.Sprint(rand.Intn(10000)))
 	if err != nil {
 		return "", err

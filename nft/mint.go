@@ -6,6 +6,11 @@ import (
 	"github.com/MixinNetwork/nfo/mtg"
 )
 
+const (
+	MintAssetId     = "c94ac88f-4671-3976-b60a-09064f1811e8"
+	MintMinimumCost = "0.001"
+)
+
 type MintWorker struct {
 	grp   *mtg.Group
 	store Store
