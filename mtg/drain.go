@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"time"
 
+	"github.com/MixinNetwork/mixin/crypto"
 	"github.com/fox-one/mixin-sdk-go"
 )
 
@@ -130,11 +131,7 @@ func (grp *Group) drainCollectibleOutputsFromNetwork(ctx context.Context, batch 
 func (grp *Group) processCollectibleOutputs(checkpoint time.Time, outputs []*CollectibleOutput) time.Time {
 	for _, out := range outputs {
 		checkpoint = out.UpdatedAt
-		if out.TokenId != CollectibleMetaTokenId {
-			continue
-		}
-
-		ver, extra := decodeTransactionWithExtra(out.SignedTx)
+		ver, nfo := decodeCollectibleTransactionWithNFO(out.SignedTx)
 		if out.SignedTx != "" && ver == nil {
 			panic(out.SignedTx)
 		}
@@ -142,8 +139,9 @@ func (grp *Group) processCollectibleOutputs(checkpoint time.Time, outputs []*Col
 			grp.writeCollectibleOutput(out, "", nil)
 			continue
 		}
-		tx := &Transaction{
-			TraceId: extra.T.String(),
+		nid := crypto.NewHash(nfo).String()
+		tx := &CollectibleTransaction{
+			TraceId: mixin.UniqueConversationID(nid, nid),
 			State:   TransactionStateInitial,
 			Raw:     ver.Marshal(),
 		}
@@ -157,7 +155,7 @@ func (grp *Group) processCollectibleOutputs(checkpoint time.Time, outputs []*Col
 	return checkpoint
 }
 
-func (grp *Group) writeCollectibleOutput(out *CollectibleOutput, traceId string, tx *Transaction) {
+func (grp *Group) writeCollectibleOutput(out *CollectibleOutput, traceId string, tx *CollectibleTransaction) {
 	err := grp.store.WriteCollectibleOutput(out, traceId)
 	if err != nil {
 		panic(err)

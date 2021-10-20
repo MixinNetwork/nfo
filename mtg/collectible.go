@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/MixinNetwork/mixin/crypto"
 	"github.com/fox-one/mixin-sdk-go"
 )
 
@@ -34,6 +35,38 @@ type CollectibleOutput struct {
 	SignedTx           string    `json:"signed_tx"`
 
 	State int `json:"-"`
+}
+
+type CollectibleTransaction struct {
+	TraceId   string
+	State     int
+	TokenId   string
+	Receivers []string
+	Threshold int
+	Amount    string
+	NFO       []byte
+	Raw       []byte
+	UpdatedAt time.Time
+}
+
+func (grp *Group) BuildCollectibleMintTransaction(ctx context.Context, tokenId, receiver string, nfo []byte) error {
+	nid := crypto.NewHash(nfo).String()
+	traceId := mixin.UniqueConversationID(nid, nid)
+	old, err := grp.store.ReadCollectibleTransaction(traceId)
+	if err != nil || old != nil {
+		return err
+	}
+	tx := &CollectibleTransaction{
+		TraceId:   traceId,
+		State:     TransactionStateInitial,
+		TokenId:   tokenId,
+		Receivers: []string{receiver},
+		Threshold: 1,
+		Amount:    "1",
+		NFO:       nfo,
+		UpdatedAt: time.Now(),
+	}
+	return grp.store.WriteCollectibleTransaction(tx.TraceId, tx)
 }
 
 func (grp *Group) ReadCollectibleOutputs(ctx context.Context, members []string, threshold uint8, offset time.Time, limit int) ([]*CollectibleOutput, error) {
@@ -69,6 +102,6 @@ func (grp *Group) ReadCollectibleOutputs(ctx context.Context, members []string, 
 	return outputs, nil
 }
 
-func (grp *Group) signCollectibleTransaction(ctx context.Context, tx *Transaction) ([]byte, error) {
+func (grp *Group) signCollectibleTransaction(ctx context.Context, tx *CollectibleTransaction) ([]byte, error) {
 	panic(0)
 }
