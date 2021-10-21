@@ -103,9 +103,6 @@ func (grp *Group) ReadCollectibleOutputs(ctx context.Context, members []string, 
 }
 
 func (grp *Group) signCollectibleMintTransaction(ctx context.Context, tx *CollectibleTransaction) ([]byte, error) {
-	if tx.Amount != "1" {
-		panic(tx)
-	}
 	outputs, err := grp.store.ListCollectibleOutputsForTransaction(tx.TraceId)
 	if err != nil {
 		return nil, err
@@ -154,6 +151,9 @@ func (grp *Group) signCollectibleMintTransaction(ctx context.Context, tx *Collec
 }
 
 func (grp *Group) buildRawCollectibleMintTransaction(ctx context.Context, tx *CollectibleTransaction, outputs []*CollectibleOutput) (*common.VersionedTransaction, error) {
+	if tx.Amount != "1" {
+		panic(tx.Amount)
+	}
 	assetId, err := crypto.HashFromString(CollectibleMixinAssetId)
 	if err != nil {
 		panic(err)
