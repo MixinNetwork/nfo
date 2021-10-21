@@ -124,8 +124,8 @@ func (bs *BadgerStore) listCollectibleOutputs(prefix string, limit int) ([]*mtg.
 }
 
 func (bs *BadgerStore) writeCollectibleOutput(txn *badger.Txn, utxo *mtg.CollectibleOutput, traceId string) error {
-	err := bs.resetOldCollectibleOutput(txn, utxo, traceId)
-	if err != nil {
+	old, err := bs.resetOldCollectibleOutput(txn, utxo, traceId)
+	if err != nil || old != nil {
 		return err
 	}
 
@@ -155,13 +155,13 @@ func (bs *BadgerStore) writeCollectibleOutput(txn *badger.Txn, utxo *mtg.Collect
 	return txn.Set(key, []byte{1})
 }
 
-func (bs *BadgerStore) resetOldCollectibleOutput(txn *badger.Txn, utxo *mtg.CollectibleOutput, traceId string) error {
+func (bs *BadgerStore) resetOldCollectibleOutput(txn *badger.Txn, utxo *mtg.CollectibleOutput, traceId string) (*mtg.CollectibleOutput, error) {
 	old, err := bs.readCollectibleOutput(txn, utxo.OutputId)
 	if err != nil || old == nil {
-		return err
+		return old, err
 	}
 	if old.State == utxo.State {
-		return nil
+		return old, nil
 	}
 	if old.State > utxo.State {
 		panic(old.State)
@@ -173,17 +173,17 @@ func (bs *BadgerStore) resetOldCollectibleOutput(txn *badger.Txn, utxo *mtg.Coll
 	key := buildCollectibleOutputTimedKey(old, prefixCollectibleOutputState, traceId)
 	err = txn.Delete(key)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	key = buildCollectibleOutputTimedKey(old, prefixCollectibleOutputToken, traceId)
 	err = txn.Delete(key)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	key = buildCollectibleOutputTimedKey(old, prefixCollectibleOutputTransaction, traceId)
-	return txn.Delete(key)
+	return nil, txn.Delete(key)
 }
 
 func (bs *BadgerStore) readCollectibleOutput(txn *badger.Txn, id string) (*mtg.CollectibleOutput, error) {

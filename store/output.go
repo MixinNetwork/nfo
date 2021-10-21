@@ -75,8 +75,8 @@ func (bs *BadgerStore) listOutputs(prefix string, limit int) ([]*mtg.Output, err
 }
 
 func (bs *BadgerStore) writeOutput(txn *badger.Txn, utxo *mtg.Output, traceId string) error {
-	err := bs.resetOldOutput(txn, utxo, traceId)
-	if err != nil {
+	old, err := bs.resetOldOutput(txn, utxo, traceId)
+	if err != nil || old != nil {
 		return err
 	}
 
@@ -106,13 +106,13 @@ func (bs *BadgerStore) writeOutput(txn *badger.Txn, utxo *mtg.Output, traceId st
 	return txn.Set(key, []byte{1})
 }
 
-func (bs *BadgerStore) resetOldOutput(txn *badger.Txn, utxo *mtg.Output, traceId string) error {
+func (bs *BadgerStore) resetOldOutput(txn *badger.Txn, utxo *mtg.Output, traceId string) (*mtg.Output, error) {
 	old, err := bs.readOutput(txn, utxo.UTXOID)
 	if err != nil || old == nil {
-		return err
+		return old, err
 	}
 	if old.State == utxo.State {
-		return nil
+		return old, nil
 	}
 	if old.State > utxo.State {
 		panic(old.State)
@@ -124,17 +124,17 @@ func (bs *BadgerStore) resetOldOutput(txn *badger.Txn, utxo *mtg.Output, traceId
 	key := buildOutputTimedKey(old, prefixOutputState, traceId)
 	err = txn.Delete(key)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	key = buildOutputTimedKey(old, prefixOutputAsset, traceId)
 	err = txn.Delete(key)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	key = buildOutputTimedKey(old, prefixOutputTransaction, traceId)
-	return txn.Delete(key)
+	return nil, txn.Delete(key)
 }
 
 func (bs *BadgerStore) readOutput(txn *badger.Txn, id string) (*mtg.Output, error) {
