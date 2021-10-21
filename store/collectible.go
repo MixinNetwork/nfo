@@ -77,7 +77,7 @@ func (bs *BadgerStore) ListCollectibleTransactions(state int, limit int) ([]*mtg
 
 	opts := badger.DefaultIteratorOptions
 	opts.PrefetchValues = false
-	opts.Prefix = []byte(transactionStatePrefix(state))
+	opts.Prefix = []byte(collectibleTransactionStatePrefix(state))
 	it := txn.NewIterator(opts)
 	defer it.Close()
 
@@ -259,7 +259,22 @@ func buildCollectibleTransactionTimedKey(tx *mtg.CollectibleTransaction) []byte 
 	buf := make([]byte, 8)
 	ts := tx.UpdatedAt.UnixNano()
 	binary.BigEndian.PutUint64(buf, uint64(ts))
-	prefix := transactionStatePrefix(tx.State)
+	prefix := collectibleTransactionStatePrefix(tx.State)
 	key := append([]byte(prefix), buf...)
 	return append(key, []byte(tx.TraceId)...)
+}
+
+func collectibleTransactionStatePrefix(state int) string {
+	prefix := prefixCollectibleTransactionState
+	switch state {
+	case mtg.TransactionStateInitial:
+		return prefix + "initiall"
+	case mtg.TransactionStateSigning:
+		return prefix + "signingg"
+	case mtg.TransactionStateSigned:
+		return prefix + "signeddd"
+	case mtg.TransactionStateSnapshot:
+		return prefix + "snapshot"
+	}
+	panic(state)
 }

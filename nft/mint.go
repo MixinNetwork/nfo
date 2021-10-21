@@ -51,4 +51,8 @@ func (mw *MintWorker) ProcessOutput(ctx context.Context, out *mtg.Output) {
 	}
 	if bytes.Compare(nfm.Group, NMDefaultGroupKey) == 0 {
 	}
+	err = mw.grp.BuildCollectibleMintTransaction(ctx, out.Sender, extra)
+	if err != nil {
+		panic(err)
+	}
 }

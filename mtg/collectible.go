@@ -203,7 +203,15 @@ func (grp *Group) buildRawCollectibleMintTransaction(ctx context.Context, tx *Co
 }
 
 func decodeCollectibleTransactionWithNFO(s string) (*common.VersionedTransaction, []byte) {
-	panic(0)
+	raw, err := hex.DecodeString(s)
+	if err != nil {
+		return nil, nil
+	}
+	tx, err := common.UnmarshalVersionedTransaction(raw)
+	if err != nil {
+		return nil, nil
+	}
+	return tx, tx.Extra
 }
 
 func nfoTraceId(nfo []byte) string {
