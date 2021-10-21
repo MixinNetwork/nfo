@@ -12,7 +12,7 @@ A NFT token is uniquely minted by `group` and `id`. And you can also include a `
 
 After you have all these fields ready, you can create a memo using code below, then send 0.001XIN to the MTG with the memo attached.
 
-````golang
+```golang
 nfo := nft.BuildMintNFO(group, id, hash)
 memo := base64.RawURLEncoding.EncodeToString(nfo)
 ```
