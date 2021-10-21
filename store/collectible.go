@@ -24,6 +24,18 @@ func (bs *BadgerStore) WriteCollectibleOutput(out *mtg.CollectibleOutput, traceI
 	})
 }
 
+func (bs *BadgerStore) WriteCollectibleOutputs(outs []*mtg.CollectibleOutput, traceId string) error {
+	return bs.db.Update(func(txn *badger.Txn) error {
+		for _, out := range outs {
+			err := bs.writeCollectibleOutput(txn, out, traceId)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
 func (bs *BadgerStore) ListCollectibleOutputsForTransaction(traceId string) ([]*mtg.CollectibleOutput, error) {
 	prefix := prefixCollectibleOutputTransaction + traceId
 	return bs.listCollectibleOutputs(prefix, 0)

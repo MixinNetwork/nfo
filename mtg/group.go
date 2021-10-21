@@ -168,7 +168,7 @@ func (grp *Group) signCollectibleTransactions(ctx context.Context) error {
 		return err
 	}
 	tx := txs[0]
-	raw, err := grp.signCollectibleTransaction(ctx, tx)
+	raw, err := grp.signCollectibleMintTransaction(ctx, tx)
 	if err != nil {
 		return err
 	}

@@ -2,6 +2,7 @@ package mtg
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/MixinNetwork/mixin/common"
 	"github.com/MixinNetwork/mixin/crypto"
 	"github.com/fox-one/mixin-sdk-go"
+	"github.com/shopspring/decimal"
 )
 
 const (
@@ -17,23 +19,23 @@ const (
 )
 
 type CollectibleOutput struct {
-	Type               string    `json:"type"`
-	UserId             string    `json:"user_id"`
-	OutputId           string    `json:"output_id"`
-	TokenId            string    `json:"token_id"`
-	TransactionHash    string    `json:"transaction_hash"`
-	OutputIndex        int64     `json:"output_index"`
-	Amount             string    `json:"amount"`
-	SendersThreshold   int64     `json:"senders_threshold"`
-	Senders            []string  `json:"senders"`
-	ReceiversThreshold int64     `json:"receivers_threshold"`
-	Receivers          []string  `json:"receivers"`
-	Memo               string    `json:"memo"`
-	StateName          string    `json:"state"`
-	CreatedAt          time.Time `json:"created_at"`
-	UpdatedAt          time.Time `json:"updated_at"`
-	SignedBy           string    `json:"signed_by"`
-	SignedTx           string    `json:"signed_tx"`
+	Type               string      `json:"type"`
+	UserId             string      `json:"user_id"`
+	OutputId           string      `json:"output_id"`
+	TokenId            string      `json:"token_id"`
+	TransactionHash    crypto.Hash `json:"transaction_hash"`
+	OutputIndex        int         `json:"output_index"`
+	Amount             string      `json:"amount"`
+	SendersThreshold   int64       `json:"senders_threshold"`
+	Senders            []string    `json:"senders"`
+	ReceiversThreshold int64       `json:"receivers_threshold"`
+	Receivers          []string    `json:"receivers"`
+	Memo               string      `json:"memo"`
+	StateName          string      `json:"state"`
+	CreatedAt          time.Time   `json:"created_at"`
+	UpdatedAt          time.Time   `json:"updated_at"`
+	SignedBy           string      `json:"signed_by"`
+	SignedTx           string      `json:"signed_tx"`
 
 	State int `json:"-"`
 }
@@ -41,7 +43,6 @@ type CollectibleOutput struct {
 type CollectibleTransaction struct {
 	TraceId   string
 	State     int
-	TokenId   string
 	Receivers []string
 	Threshold int
 	Amount    string
@@ -50,7 +51,7 @@ type CollectibleTransaction struct {
 	UpdatedAt time.Time
 }
 
-func (grp *Group) BuildCollectibleMintTransaction(ctx context.Context, tokenId, receiver string, nfo []byte) error {
+func (grp *Group) BuildCollectibleMintTransaction(ctx context.Context, receiver string, nfo []byte) error {
 	traceId := nfoTraceId(nfo)
 	old, err := grp.store.ReadCollectibleTransaction(traceId)
 	if err != nil || old != nil {
@@ -59,7 +60,6 @@ func (grp *Group) BuildCollectibleMintTransaction(ctx context.Context, tokenId, 
 	tx := &CollectibleTransaction{
 		TraceId:   traceId,
 		State:     TransactionStateInitial,
-		TokenId:   tokenId,
 		Receivers: []string{receiver},
 		Threshold: 1,
 		Amount:    "1",
@@ -102,8 +102,104 @@ func (grp *Group) ReadCollectibleOutputs(ctx context.Context, members []string, 
 	return outputs, nil
 }
 
-func (grp *Group) signCollectibleTransaction(ctx context.Context, tx *CollectibleTransaction) ([]byte, error) {
-	panic(0)
+func (grp *Group) signCollectibleMintTransaction(ctx context.Context, tx *CollectibleTransaction) ([]byte, error) {
+	if tx.Amount != "1" {
+		panic(tx)
+	}
+	outputs, err := grp.store.ListCollectibleOutputsForTransaction(tx.TraceId)
+	if err != nil {
+		return nil, err
+	}
+	if len(outputs) == 0 {
+		outputs, err = grp.store.ListCollectibleOutputsForToken(mixin.UTXOStateUnspent, CollectibleMetaTokenId, 36)
+	}
+	if err != nil {
+		return nil, err
+	}
+	if len(outputs) == 0 {
+		return nil, fmt.Errorf("empty outputs %s", tx.Amount)
+	}
+
+	ver, _ := decodeTransactionWithExtra(outputs[0].SignedTx)
+	if ver == nil {
+		ver, err = grp.buildRawCollectibleMintTransaction(ctx, tx, outputs)
+		if err != nil {
+			return nil, err
+		}
+	} else if ver.AggregatedSignature != nil {
+		return ver.Marshal(), nil
+	}
+
+	raw := hex.EncodeToString(ver.AsLatestVersion().Marshal())
+	req, err := grp.CreateCollectibleRequest(ctx, mixin.MultisigActionSign, raw)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, out := range outputs {
+		out.State = OutputStateSigned
+		out.SignedBy = ver.AsLatestVersion().PayloadHash().String()
+		out.SignedTx = raw
+	}
+	err = grp.store.WriteCollectibleOutputs(outputs, tx.TraceId)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err = grp.SignCollectible(ctx, req.RequestID, grp.pin)
+	if err != nil {
+		return nil, err
+	}
+	return hex.DecodeString(req.RawTransaction)
+}
+
+func (grp *Group) buildRawCollectibleMintTransaction(ctx context.Context, tx *CollectibleTransaction, outputs []*CollectibleOutput) (*common.VersionedTransaction, error) {
+	assetId, err := crypto.HashFromString(CollectibleMixinAssetId)
+	if err != nil {
+		panic(err)
+	}
+	ver := common.NewTransaction(assetId)
+	ver.Extra = tx.NFO
+
+	var total common.Integer
+	for _, out := range outputs {
+		total = total.Add(common.NewIntegerFromString(out.Amount))
+		ver.AddInput(out.TransactionHash, out.OutputIndex)
+	}
+	if total.Cmp(common.NewIntegerFromString(tx.Amount)) < 0 {
+		return nil, fmt.Errorf("insufficient %s %s", total, tx.Amount)
+	}
+
+	keys, err := grp.mixin.BatchReadGhostKeys(ctx, []*mixin.GhostInput{{
+		Receivers: tx.Receivers,
+		Index:     0,
+		Hint:      tx.TraceId,
+	}, {
+		Receivers: grp.members,
+		Index:     1,
+		Hint:      tx.TraceId,
+	}})
+	if err != nil {
+		return nil, err
+	}
+
+	amount, err := decimal.NewFromString(tx.Amount)
+	if err != nil {
+		return nil, err
+	}
+	out := keys[0].DumpOutput(uint8(tx.Threshold), amount)
+	ver.Outputs = append(ver.Outputs, newCommonOutput(out))
+
+	if diff := total.Sub(common.NewIntegerFromString(tx.Amount)); diff.Sign() > 0 {
+		amount, err := decimal.NewFromString(diff.String())
+		if err != nil {
+			return nil, err
+		}
+		out := keys[1].DumpOutput(uint8(grp.threshold), amount)
+		ver.Outputs = append(ver.Outputs, newCommonOutput(out))
+	}
+
+	return ver.AsLatestVersion(), nil
 }
 
 func decodeCollectibleTransactionWithNFO(s string) (*common.VersionedTransaction, []byte) {
@@ -113,4 +209,31 @@ func decodeCollectibleTransactionWithNFO(s string) (*common.VersionedTransaction
 func nfoTraceId(nfo []byte) string {
 	nid := crypto.NewHash(nfo).String()
 	return mixin.UniqueConversationID(nid, nid)
+}
+
+type cr struct {
+	RequestID      string `json:"request_id"`
+	RawTransaction string `json:"raw_transaction"`
+}
+
+func (grp *Group) CreateCollectibleRequest(ctx context.Context, action, raw string) (*cr, error) {
+	params := map[string]string{
+		"action": action,
+		"raw":    raw,
+	}
+
+	var req cr
+	err := grp.mixin.Post(ctx, "/collectibles/requests", params, &req)
+	return &req, err
+}
+
+func (grp *Group) SignCollectible(ctx context.Context, reqID, pin string) (*cr, error) {
+	uri := "/collectibles/requests/" + reqID + "/sign"
+	params := map[string]string{
+		"pin": grp.mixin.EncryptPin(pin),
+	}
+
+	var req cr
+	err := grp.mixin.Post(ctx, uri, params, &req)
+	return &req, err
 }
