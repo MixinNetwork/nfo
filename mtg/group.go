@@ -2,11 +2,13 @@ package mtg
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"strings"
 	"time"
 
+	"github.com/MixinNetwork/mixin/common"
 	"github.com/fox-one/mixin-sdk-go"
 )
 
@@ -128,6 +130,15 @@ func (grp *Group) signTransactions(ctx context.Context) error {
 	tx.Raw = raw
 	tx.UpdatedAt = time.Now()
 	tx.State = TransactionStateSigning
+
+	ver, _ := common.UnmarshalVersionedTransaction(raw)
+	extra, _ := base64.RawURLEncoding.DecodeString(string(ver.Extra))
+	var p MixinExtraPack
+	err = common.MsgpackUnmarshal(extra, &p)
+	if p.T.String() != tx.TraceId {
+		panic(hex.EncodeToString(raw))
+	}
+
 	return grp.store.WriteTransaction(tx.TraceId, tx)
 }
 
@@ -175,6 +186,12 @@ func (grp *Group) signCollectibleTransactions(ctx context.Context) error {
 	tx.Raw = raw
 	tx.UpdatedAt = time.Now()
 	tx.State = TransactionStateSigning
+
+	ver, _ := common.UnmarshalVersionedTransaction(raw)
+	if nfoTraceId(ver.Extra) != tx.TraceId {
+		panic(hex.EncodeToString(raw))
+	}
+
 	return grp.store.WriteCollectibleTransaction(tx.TraceId, tx)
 }
 
