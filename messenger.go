@@ -19,12 +19,13 @@ const (
 	CNBAssetID = "965e5c6e-434c-3fa9-b780-c50f43cd955c"
 )
 
-type RefundWorker struct {
+// Messenger is a simple MTG worker demo, it also sends some cmd to MM
+type MessengerWorker struct {
 	client *mixin.Client
 	grp    *mtg.Group
 }
 
-func NewRefundWorker(ctx context.Context, grp *mtg.Group, conf *mtg.Configuration) *RefundWorker {
+func NewMessengerWorker(ctx context.Context, grp *mtg.Group, conf *mtg.Configuration) *MessengerWorker {
 	s := &mixin.Keystore{
 		ClientID:   conf.App.ClientId,
 		SessionID:  conf.App.SessionId,
@@ -36,7 +37,7 @@ func NewRefundWorker(ctx context.Context, grp *mtg.Group, conf *mtg.Configuratio
 		panic(err)
 	}
 	rand.Seed(time.Now().UnixNano())
-	rw := &RefundWorker{
+	rw := &MessengerWorker{
 		client: client,
 		grp:    grp,
 	}
@@ -44,7 +45,7 @@ func NewRefundWorker(ctx context.Context, grp *mtg.Group, conf *mtg.Configuratio
 	return rw
 }
 
-func (rw *RefundWorker) ProcessOutput(ctx context.Context, out *mtg.Output) {
+func (rw *MessengerWorker) ProcessOutput(ctx context.Context, out *mtg.Output) {
 	if out.Sender == "" || out.AssetID != CNBAssetID {
 		return
 	}
@@ -56,7 +57,7 @@ func (rw *RefundWorker) ProcessOutput(ctx context.Context, out *mtg.Output) {
 	}
 }
 
-func (rw *RefundWorker) loop(ctx context.Context) {
+func (rw *MessengerWorker) loop(ctx context.Context) {
 	for {
 		err := rw.client.LoopBlaze(context.Background(), rw)
 		fmt.Println("LoopBlaze", err)
@@ -67,7 +68,7 @@ func (rw *RefundWorker) loop(ctx context.Context) {
 	}
 }
 
-func (rw *RefundWorker) OnMessage(ctx context.Context, msg *mixin.MessageView, userId string) error {
+func (rw *MessengerWorker) OnMessage(ctx context.Context, msg *mixin.MessageView, userId string) error {
 	code := "mixin://codes/"
 	if msg.Category == mixin.MessageCategoryPlainSticker {
 		pid, err := rw.handleMintMessage(ctx, msg.MessageID)
@@ -93,11 +94,11 @@ func (rw *RefundWorker) OnMessage(ctx context.Context, msg *mixin.MessageView, u
 	return rw.client.SendMessage(ctx, mr)
 }
 
-func (rw *RefundWorker) OnAckReceipt(ctx context.Context, msg *mixin.MessageView, userId string) error {
+func (rw *MessengerWorker) OnAckReceipt(ctx context.Context, msg *mixin.MessageView, userId string) error {
 	return nil
 }
 
-func (rw *RefundWorker) handleMintMessage(ctx context.Context, msgId string) (string, error) {
+func (rw *MessengerWorker) handleMintMessage(ctx context.Context, msgId string) (string, error) {
 	amount, err := decimal.NewFromString(nft.MintMinimumCost)
 	if err != nil {
 		return "", err
@@ -123,7 +124,7 @@ func (rw *RefundWorker) handleMintMessage(ctx context.Context, msgId string) (st
 	return payment.CodeID, nil
 }
 
-func (rw *RefundWorker) handleRefundMessage(ctx context.Context, msgId string) (string, error) {
+func (rw *MessengerWorker) handleRefundMessage(ctx context.Context, msgId string) (string, error) {
 	amount, err := decimal.NewFromString(fmt.Sprint(rand.Intn(10000)))
 	if err != nil {
 		return "", err

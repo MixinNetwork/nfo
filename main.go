@@ -44,7 +44,7 @@ func main() {
 	}
 	mw := nft.NewMintWorker(group, db)
 	group.AddWorker(mw)
-	rw := NewRefundWorker(ctx, group, conf)
+	rw := NewMessengerWorker(ctx, group, conf)
 	group.AddWorker(rw)
 	group.Run(ctx)
 }
