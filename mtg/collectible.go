@@ -111,7 +111,7 @@ func (grp *Group) signCollectibleMintTransaction(ctx context.Context, tx *Collec
 		return nil, err
 	}
 	if len(outputs) == 0 {
-		outputs, err = grp.store.ListCollectibleOutputsForToken(mixin.UTXOStateUnspent, CollectibleMetaTokenId, 36)
+		outputs, err = grp.store.ListCollectibleOutputsForToken(mixin.UTXOStateUnspent, CollectibleMetaTokenId, 1)
 	}
 	if err != nil {
 		return nil, err
@@ -120,7 +120,7 @@ func (grp *Group) signCollectibleMintTransaction(ctx context.Context, tx *Collec
 		return nil, fmt.Errorf("empty outputs %s", tx.Amount)
 	}
 
-	ver, _ := decodeTransactionWithExtra(outputs[0].SignedTx)
+	ver := decodeCollectibleTransaction(outputs[0].SignedTx)
 	if ver == nil {
 		ver, err = grp.buildRawCollectibleMintTransaction(ctx, tx, outputs)
 		if err != nil {
@@ -202,16 +202,16 @@ func (grp *Group) buildRawCollectibleMintTransaction(ctx context.Context, tx *Co
 	return ver.AsLatestVersion(), nil
 }
 
-func decodeCollectibleTransactionWithNFO(s string) (*common.VersionedTransaction, []byte) {
+func decodeCollectibleTransaction(s string) *common.VersionedTransaction {
 	raw, err := hex.DecodeString(s)
 	if err != nil {
-		return nil, nil
+		return nil
 	}
 	tx, err := common.UnmarshalVersionedTransaction(raw)
 	if err != nil {
-		return nil, nil
+		return nil
 	}
-	return tx, tx.Extra
+	return tx
 }
 
 func nfoTraceId(nfo []byte) string {

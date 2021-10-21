@@ -130,7 +130,7 @@ func (grp *Group) drainCollectibleOutputsFromNetwork(ctx context.Context, batch 
 func (grp *Group) processCollectibleOutputs(checkpoint time.Time, outputs []*CollectibleOutput) time.Time {
 	for _, out := range outputs {
 		checkpoint = out.UpdatedAt
-		ver, nfo := decodeCollectibleTransactionWithNFO(out.SignedTx)
+		ver := decodeCollectibleTransaction(out.SignedTx)
 		if out.SignedTx != "" && ver == nil {
 			panic(out.SignedTx)
 		}
@@ -139,9 +139,10 @@ func (grp *Group) processCollectibleOutputs(checkpoint time.Time, outputs []*Col
 			continue
 		}
 		tx := &CollectibleTransaction{
-			TraceId: nfoTraceId(nfo),
+			TraceId: nfoTraceId(ver.Extra),
 			State:   TransactionStateInitial,
 			Raw:     ver.Marshal(),
+			NFO:     ver.Extra,
 		}
 		if ver.AggregatedSignature != nil {
 			out.State = OutputStateSpent
