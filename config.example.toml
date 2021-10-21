@@ -1,15 +1,19 @@
 [genesis]
 members = [
-  "eea900a8-b327-488c-8d8d-1428702fe240",
-  "a0d752b2-df26-4703-9f78-e2960c56fd87",
-  "a9780230-aca1-4f38-9170-cd9d476d0565",
+  "4b188942-9fb0-4b99-b4be-e741a06d1ebf",
+  "dd655520-c919-4349-822f-af92fabdbdf4",
+  "047061e6-496d-4c35-b06b-b0424a8a400d",
+  "acf65344-c778-41ee-bacb-eb546bacfb9f",
+  "a51006d0-146b-4b32-a2ce-7defbf0d7735",
+  "cf4abd9c-2cfa-4b5a-b1bd-e2b61a83fabd",
+  "50115496-7247-4e2c-857b-ec8680756bee",
 ]
-threshold = 2
+threshold = 5
 timestamp = 1613221058056658542
 
 [app]
-client-id = "eea900a8-b327-488c-8d8d-1428702fe240"
-session-id = "d903aa50-c739-4e8c-a8ad-99eb13235f39"
+client-id = ""
+session-id = ""
 private-key = ""
 pin-token = ""
 pin = ""
