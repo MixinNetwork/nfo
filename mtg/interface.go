@@ -27,7 +27,7 @@ type Store interface {
 
 	WriteCollectibleOutput(utxo *CollectibleOutput, traceId string) error
 	ListCollectibleOutputsForTransaction(traceId string) ([]*CollectibleOutput, error)
-	ListOutputsForToken(state, tokenId string, limit int) ([]*CollectibleOutput, error)
+	ListCollectibleOutputsForToken(state, tokenId string, limit int) ([]*CollectibleOutput, error)
 
 	WriteCollectibleTransaction(traceId string, tx *CollectibleTransaction) error
 	ReadCollectibleTransaction(traceId string) (*CollectibleTransaction, error)

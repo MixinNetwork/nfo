@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/MixinNetwork/mixin/common"
 	"github.com/MixinNetwork/mixin/crypto"
 	"github.com/fox-one/mixin-sdk-go"
 )
@@ -50,8 +51,7 @@ type CollectibleTransaction struct {
 }
 
 func (grp *Group) BuildCollectibleMintTransaction(ctx context.Context, tokenId, receiver string, nfo []byte) error {
-	nid := crypto.NewHash(nfo).String()
-	traceId := mixin.UniqueConversationID(nid, nid)
+	traceId := nfoTraceId(nfo)
 	old, err := grp.store.ReadCollectibleTransaction(traceId)
 	if err != nil || old != nil {
 		return err
@@ -104,4 +104,13 @@ func (grp *Group) ReadCollectibleOutputs(ctx context.Context, members []string, 
 
 func (grp *Group) signCollectibleTransaction(ctx context.Context, tx *CollectibleTransaction) ([]byte, error) {
 	panic(0)
+}
+
+func decodeCollectibleTransactionWithNFO(s string) (*common.VersionedTransaction, []byte) {
+	panic(0)
+}
+
+func nfoTraceId(nfo []byte) string {
+	nid := crypto.NewHash(nfo).String()
+	return mixin.UniqueConversationID(nid, nid)
 }

@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"time"
 
-	"github.com/MixinNetwork/mixin/crypto"
 	"github.com/fox-one/mixin-sdk-go"
 )
 
@@ -139,9 +138,8 @@ func (grp *Group) processCollectibleOutputs(checkpoint time.Time, outputs []*Col
 			grp.writeCollectibleOutput(out, "", nil)
 			continue
 		}
-		nid := crypto.NewHash(nfo).String()
 		tx := &CollectibleTransaction{
-			TraceId: mixin.UniqueConversationID(nid, nid),
+			TraceId: nfoTraceId(nfo),
 			State:   TransactionStateInitial,
 			Raw:     ver.Marshal(),
 		}
