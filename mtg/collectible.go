@@ -31,13 +31,13 @@ type CollectibleOutput struct {
 	ReceiversThreshold int64       `json:"receivers_threshold"`
 	Receivers          []string    `json:"receivers"`
 	Memo               string      `json:"memo"`
-	StateName          string      `json:"state"`
 	CreatedAt          time.Time   `json:"created_at"`
 	UpdatedAt          time.Time   `json:"updated_at"`
 	SignedBy           string      `json:"signed_by"`
 	SignedTx           string      `json:"signed_tx"`
 
-	State int `json:"-"`
+	JsonState string `json:"state" msgpack:"-"`
+	State     int    `json:"-"`
 }
 
 type CollectibleTransaction struct {
@@ -90,7 +90,7 @@ func (grp *Group) ReadCollectibleOutputs(ctx context.Context, members []string, 
 	}
 
 	for _, o := range outputs {
-		switch o.StateName {
+		switch o.JsonState {
 		case mixin.UTXOStateUnspent:
 			o.State = OutputStateUnspent
 		case mixin.UTXOStateSigned:
@@ -100,6 +100,18 @@ func (grp *Group) ReadCollectibleOutputs(ctx context.Context, members []string, 
 		}
 	}
 	return outputs, nil
+}
+
+func (out *CollectibleOutput) StateName() string {
+	switch out.State {
+	case OutputStateUnspent:
+		return mixin.UTXOStateUnspent
+	case OutputStateSigned:
+		return mixin.UTXOStateSigned
+	case OutputStateSpent:
+		return mixin.UTXOStateSpent
+	}
+	panic(out.State)
 }
 
 func (grp *Group) signCollectibleMintTransaction(ctx context.Context, tx *CollectibleTransaction) ([]byte, error) {

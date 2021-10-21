@@ -209,9 +209,9 @@ func buildCollectibleOutputTimedKey(out *mtg.CollectibleOutput, prefix string, t
 	binary.BigEndian.PutUint64(buf, uint64(ts))
 	switch prefix {
 	case prefixCollectibleOutputState:
-		prefix = prefix + out.StateName
+		prefix = prefix + out.StateName()
 	case prefixCollectibleOutputToken:
-		prefix = prefix + out.StateName + out.TokenId
+		prefix = prefix + out.StateName() + out.TokenId
 	case prefixCollectibleOutputTransaction:
 		prefix = prefix + traceId
 	default:
