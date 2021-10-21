@@ -49,7 +49,23 @@ func (mw *MintWorker) ProcessOutput(ctx context.Context, out *mtg.Output) {
 	if err != nil {
 		return
 	}
-	if bytes.Compare(nfm.Group, NMDefaultGroupKey) == 0 {
+
+	old, err := mw.store.ReadMintToken(nfm.Group, nfm.Token)
+	if err != nil {
+		panic(err)
+	} else if old != nil {
+		return
+	}
+	og, err := mw.store.ReadMintGroup(nfm.Group)
+	if err != nil {
+		panic(err)
+	}
+	if og != nil && og.Creator != out.Sender && bytes.Compare(nfm.Group, NMDefaultGroupKey) != 0 {
+		return
+	}
+	err = mw.store.WriteMintToken(nfm.Group, nfm.Token, out.Sender)
+	if err != nil {
+		panic(err)
 	}
 	err = mw.grp.BuildCollectibleMintTransaction(ctx, out.Sender, extra)
 	if err != nil {
