@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/MixinNetwork/mixin/common"
+	"github.com/MixinNetwork/mixin/logger"
 	"github.com/fox-one/mixin-sdk-go"
 )
 
@@ -124,6 +125,7 @@ func (grp *Group) signTransactions(ctx context.Context) error {
 	}
 	tx := txs[0]
 	raw, err := grp.signTransaction(ctx, tx)
+	logger.Verbosef("Group.signTransaction(%v) => %s %s", *tx, hex.EncodeToString(raw), err)
 	if err != nil {
 		return err
 	}
@@ -180,6 +182,7 @@ func (grp *Group) signCollectibleTransactions(ctx context.Context) error {
 	}
 	tx := txs[0]
 	raw, err := grp.signCollectibleMintTransaction(ctx, tx)
+	logger.Verbosef("Group.signCollectibleTransaction(%v) => %s %s", *tx, hex.EncodeToString(raw), err)
 	if err != nil {
 		return err
 	}

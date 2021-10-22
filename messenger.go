@@ -108,7 +108,7 @@ func (rw *MessengerWorker) handleMintMessage(ctx context.Context, msgId string) 
 		return "", err
 	}
 	contentHash := crypto.NewHash([]byte("TEST:" + msgId))
-	nfo := nft.BuildMintNFO(nft.NMDefaultGroupKey, mid.Bytes(), contentHash)
+	nfo := nft.BuildMintNFO(uuid.Nil.String(), mid.Bytes(), contentHash)
 	pr := mixin.TransferInput{
 		AssetID: nft.MintAssetId,
 		Amount:  amount,

@@ -27,7 +27,7 @@ const (
 )
 
 var (
-	NMDefaultGroupKey = []byte{0}
+	NMDefaultGroupKey = uuid.Nil.Bytes()
 	NMDefaultTokenKey = []byte{0}
 
 	NMDefaultChain uuid.UUID
@@ -56,19 +56,20 @@ type NFOMemo struct {
 	Mask  uint64
 	Chain uuid.UUID // 16 bytes
 	Class []byte    // 64 bytes contract address
-	Group []byte    // 64 bytes
+	Group uuid.UUID // 16 bytes
 	Token []byte    // 64 bytes hash of content
 
 	Extra []byte
 }
 
-func BuildMintNFO(group, token []byte, hash crypto.Hash) []byte {
+func BuildMintNFO(group string, token []byte, hash crypto.Hash) []byte {
+	gid := uuid.FromStringOrNil(group)
 	nfo := NFOMemo{
 		Prefix:  NMPrefix,
 		Version: NMVersion,
 		Chain:   NMDefaultChain,
 		Class:   NMDefaultClass,
-		Group:   group,
+		Group:   gid,
 		Token:   token,
 		Extra:   hash[:],
 	}
@@ -109,7 +110,7 @@ func (nm *NFOMemo) Encode() []byte {
 		nw.writeUint64(nm.Mask)
 		nw.writeUUID(nm.Chain)
 		nw.writeSlice(nm.Class)
-		nw.writeSlice(nm.Group)
+		nw.writeSlice(nm.Group.Bytes())
 		nw.writeSlice(nm.Token)
 		st := tokenBytesStrip(nm.Token)
 		if bytes.Compare(nm.Token, st) != 0 {
@@ -165,7 +166,11 @@ func DecodeNFOMemo(b []byte) (*NFOMemo, error) {
 		if bytes.Compare(nm.Class, NMDefaultClass) != 0 {
 			return nil, fmt.Errorf("invalid class %s", hex.EncodeToString(nm.Class))
 		}
-		nm.Group, err = nr.readBytes()
+		group, err := nr.readBytes()
+		if err != nil {
+			return nil, err
+		}
+		nm.Group, err = uuid.FromBytes(group)
 		if err != nil {
 			return nil, err
 		}
@@ -286,9 +291,6 @@ func (nw *nfoWriter) writeUint32(d uint32) {
 }
 
 func tokenBytesStrip(b []byte) []byte {
-	if len(b) == 0 {
-		return b
-	}
 	b = new(big.Int).SetBytes(b).Bytes()
 	if len(b) == 0 {
 		return []byte{0}

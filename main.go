@@ -7,12 +7,14 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/MixinNetwork/mixin/logger"
 	"github.com/MixinNetwork/nfo/mtg"
 	"github.com/MixinNetwork/nfo/nft"
 	"github.com/MixinNetwork/nfo/store"
 )
 
 func main() {
+	logger.SetLevel(logger.VERBOSE)
 	ctx := context.Background()
 
 	bp := flag.String("d", "~/.mixin/nfo/data", "database directory path")
