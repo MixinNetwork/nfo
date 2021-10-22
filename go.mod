@@ -5,10 +5,10 @@ go 1.17
 require (
 	github.com/MixinNetwork/mixin v0.13.6
 	github.com/dgraph-io/badger/v3 v3.2103.2
-	github.com/fox-one/mixin-sdk-go v1.5.1
-	github.com/gofrs/uuid v4.0.0+incompatible
+	github.com/fox-one/mixin-sdk-go v1.5.3
+	github.com/gofrs/uuid v4.1.0+incompatible
 	github.com/pelletier/go-toml v1.9.4
-	github.com/shopspring/decimal v1.3.0
+	github.com/shopspring/decimal v1.3.1
 )
 
 require (
