@@ -8,7 +8,7 @@ A NFT token is uniquely minted by `collection` and `id`. And you can optionally 
 
 - `collection` must be a valid UUID string, which represents a collection, e.g. CryptoPunks. Everyone can start the collection if it is not minted yet.
 - `id` must be the big-endian bytes of an integer, which is the unique identifier in the collection, e.g. 1234. Only the collection creator can mint a new token in it, while everyone can mint in the default collection.
-- `hash` is the checksum of the token represented content, e.g. image, audio, video or any media combinations.
+- `hash` is the rule defined checksum of the token metadata, and the metadata should be available at `https://some-nft-host/hash.json`.
 
 After you have all these fields ready, you can create a memo using code below, then send 0.001XIN to the MTG with the memo attached.
 
@@ -56,7 +56,7 @@ The MTG doesn't maintain metadata for tokens, it's up to the token creators and 
 The metadata file can be modified by adding more properties, and should be verified as valid when the following code returns true.
 
 ```golang
-content = concat all checksum.fields
+content = concat all the values of checksum.fields
 checksum = checksum.algorithm content
 if checksum not equals to hash {
   return false
@@ -73,6 +73,8 @@ for param in checksum.fields {
     return false
   }
 }
+
+return true
 ```
 
 ## Run Node
