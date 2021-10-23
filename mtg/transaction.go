@@ -30,6 +30,7 @@ type Transaction struct {
 	Amount    string
 	Memo      string
 	Raw       []byte
+	Hash      crypto.Hash
 	UpdatedAt time.Time
 }
 
@@ -53,7 +54,7 @@ func (grp *Group) BuildTransaction(ctx context.Context, assetId string, receiver
 			return fmt.Errorf("invalid receiver %s", r)
 		}
 	}
-	old, err := grp.store.ReadTransaction(traceId)
+	old, err := grp.store.ReadTransactionByTraceId(traceId)
 	if err != nil || old != nil {
 		return err
 	}
@@ -67,7 +68,7 @@ func (grp *Group) BuildTransaction(ctx context.Context, assetId string, receiver
 		Memo:      memo,
 		UpdatedAt: time.Now(),
 	}
-	return grp.store.WriteTransaction(traceId, tx)
+	return grp.store.WriteTransaction(tx)
 }
 
 func (grp *Group) signTransaction(ctx context.Context, tx *Transaction) ([]byte, error) {

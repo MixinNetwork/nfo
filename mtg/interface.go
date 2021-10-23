@@ -2,6 +2,8 @@ package mtg
 
 import (
 	"context"
+
+	"github.com/MixinNetwork/mixin/crypto"
 )
 
 type Store interface {
@@ -21,8 +23,9 @@ type Store interface {
 	WriteAction(act *Action) error
 	ListActions(limit int) ([]*Output, error)
 
-	WriteTransaction(traceId string, tx *Transaction) error
-	ReadTransaction(traceId string) (*Transaction, error)
+	WriteTransaction(tx *Transaction) error
+	ReadTransactionByTraceId(traceId string) (*Transaction, error)
+	ReadTransactionByHash(hash crypto.Hash) (*Transaction, error)
 	ListTransactions(state int, limit int) ([]*Transaction, error)
 
 	WriteCollectibleOutput(utxo *CollectibleOutput, traceId string) error

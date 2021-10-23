@@ -124,11 +124,12 @@ func (grp *Group) signTransactions(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	ver, _ := common.UnmarshalVersionedTransaction(raw)
 	tx.Raw = raw
+	tx.Hash = ver.PayloadHash()
 	tx.UpdatedAt = time.Now()
 	tx.State = TransactionStateSigning
 
-	ver, _ := common.UnmarshalVersionedTransaction(raw)
 	extra, _ := base64.RawURLEncoding.DecodeString(string(ver.Extra))
 	var p mixinExtraPack
 	err = common.MsgpackUnmarshal(extra, &p)
@@ -136,7 +137,7 @@ func (grp *Group) signTransactions(ctx context.Context) error {
 		panic(hex.EncodeToString(raw))
 	}
 
-	return grp.store.WriteTransaction(tx.TraceId, tx)
+	return grp.store.WriteTransaction(tx)
 }
 
 func (grp *Group) publishTransactions(ctx context.Context) error {
@@ -152,7 +153,7 @@ func (grp *Group) publishTransactions(ctx context.Context) error {
 			continue
 		}
 		tx.State = TransactionStateSnapshot
-		err = grp.store.WriteTransaction(tx.TraceId, tx)
+		err = grp.store.WriteTransaction(tx)
 		if err != nil {
 			return err
 		}

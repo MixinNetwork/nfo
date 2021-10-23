@@ -49,6 +49,7 @@ func (grp *Group) processMultisigOutputs(checkpoint time.Time, outputs []*mixin.
 			TraceId: extra.T.String(),
 			State:   TransactionStateInitial,
 			Raw:     ver.Marshal(),
+			Hash:    ver.PayloadHash(),
 		}
 		if ver.AggregatedSignature != nil {
 			out.State = mixin.UTXOStateSpent
@@ -59,6 +60,12 @@ func (grp *Group) processMultisigOutputs(checkpoint time.Time, outputs []*mixin.
 
 	for _, utxo := range outputs {
 		out := NewOutputFromMultisig(utxo)
+		old, err := grp.store.ReadTransactionByHash(out.TransactionHash)
+		if err != nil {
+			panic(out.TransactionHash)
+		} else if old != nil {
+			continue
+		}
 		grp.writeAction(out, ActionStateInitial)
 	}
 	return checkpoint
@@ -73,14 +80,14 @@ func (grp *Group) writeOutputOrPanic(utxo *mixin.MultisigUTXO, traceId string, t
 	if traceId == "" {
 		return
 	}
-	old, err := grp.store.ReadTransaction(traceId)
+	old, err := grp.store.ReadTransactionByTraceId(traceId)
 	if err != nil {
 		panic(err)
 	}
 	if old != nil && old.State >= TransactionStateSigned {
 		return
 	}
-	err = grp.store.WriteTransaction(traceId, tx)
+	err = grp.store.WriteTransaction(tx)
 	if err != nil {
 		panic(err)
 	}

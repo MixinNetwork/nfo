@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 
 	"github.com/MixinNetwork/mixin/common"
+	"github.com/MixinNetwork/mixin/crypto"
 	"github.com/MixinNetwork/nfo/mtg"
 	"github.com/dgraph-io/badger/v3"
 )
@@ -11,9 +12,10 @@ import (
 const (
 	prefixTransactionPayload = "TRANSACTION:PAYLOAD:"
 	prefixTransactionState   = "TRANSACTION:STATE:"
+	prefixTransactionHash    = "TRANSACTION:HASH:"
 )
 
-func (bs *BadgerStore) WriteTransaction(traceId string, tx *mtg.Transaction) error {
+func (bs *BadgerStore) WriteTransaction(tx *mtg.Transaction) error {
 	return bs.db.Update(func(txn *badger.Txn) error {
 		old, err := bs.resetOldTransaction(txn, tx)
 		if err != nil || old != nil {
@@ -26,16 +28,47 @@ func (bs *BadgerStore) WriteTransaction(traceId string, tx *mtg.Transaction) err
 			return err
 		}
 
+		if len(tx.Raw) > 0 {
+			if !tx.Hash.HasValue() {
+				panic(tx.TraceId)
+			}
+			key = append([]byte(prefixTransactionHash), tx.Hash[:]...)
+			val = []byte(tx.TraceId)
+			err = txn.Set(key, val)
+			if err != nil {
+				return err
+			}
+		}
+
 		key = buildTransactionTimedKey(tx)
 		return txn.Set(key, []byte{1})
 	})
 }
 
-func (bs *BadgerStore) ReadTransaction(traceId string) (*mtg.Transaction, error) {
+func (bs *BadgerStore) ReadTransactionByTraceId(traceId string) (*mtg.Transaction, error) {
 	txn := bs.db.NewTransaction(false)
 	defer txn.Discard()
 
 	return bs.readTransaction(txn, traceId)
+}
+
+func (bs *BadgerStore) ReadTransactionByHash(hash crypto.Hash) (*mtg.Transaction, error) {
+	txn := bs.db.NewTransaction(false)
+	defer txn.Discard()
+
+	key := append([]byte(prefixTransactionHash), hash[:]...)
+	item, err := txn.Get(key)
+	if err == badger.ErrKeyNotFound {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+	traceId, err := item.ValueCopy(nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return bs.readTransaction(txn, string(traceId))
 }
 
 func (bs *BadgerStore) ListTransactions(state int, limit int) ([]*mtg.Transaction, error) {
