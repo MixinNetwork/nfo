@@ -1,18 +1,18 @@
 package nft
 
 type Store interface {
-	WriteMintToken(group []byte, id []byte, user string) error
-	ReadMintGroup(group []byte) (*Group, error)
-	ReadMintToken(group, token []byte) (*Token, error)
+	WriteMintToken(collection []byte, id []byte, user string) error
+	ReadMintCollection(collection []byte) (*Collection, error)
+	ReadMintToken(collection, token []byte) (*Token, error)
 }
 
-type Group struct {
+type Collection struct {
 	Key         []byte
 	Creator     string
 	Circulation int
 }
 
 type Token struct {
-	Group []byte
-	Key   []byte
+	Collection []byte
+	Key        []byte
 }

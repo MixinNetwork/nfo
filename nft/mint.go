@@ -56,20 +56,21 @@ func (mw *MintWorker) ProcessOutput(ctx context.Context, out *mtg.Output) {
 		return
 	}
 
-	old, err := mw.store.ReadMintToken(nfm.Group.Bytes(), nfm.Token)
+	ck := nfm.Collection.Bytes()
+	old, err := mw.store.ReadMintToken(ck, nfm.Token)
 	if err != nil {
 		panic(err)
 	} else if old != nil {
 		return
 	}
-	og, err := mw.store.ReadMintGroup(nfm.Group.Bytes())
+	og, err := mw.store.ReadMintCollection(ck)
 	if err != nil {
 		panic(err)
 	}
-	if og != nil && og.Creator != out.Sender && bytes.Compare(nfm.Group.Bytes(), NMDefaultGroupKey) != 0 {
+	if og != nil && og.Creator != out.Sender && bytes.Compare(ck, NMDefaultCollectionKey) != 0 {
 		return
 	}
-	err = mw.store.WriteMintToken(nfm.Group.Bytes(), nfm.Token, out.Sender)
+	err = mw.store.WriteMintToken(ck, nfm.Token, out.Sender)
 	if err != nil {
 		panic(err)
 	}

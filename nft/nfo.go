@@ -27,8 +27,7 @@ const (
 )
 
 var (
-	NMDefaultGroupKey = uuid.Nil.Bytes()
-	NMDefaultTokenKey = []byte{0}
+	NMDefaultCollectionKey = uuid.Nil.Bytes()
 
 	NMDefaultChain uuid.UUID
 	NMDefaultClass []byte
@@ -47,31 +46,31 @@ func init() {
 	NMDefaultClass = class
 }
 
-// asset = hash(chain || class || group || token)
+// asset = hash(chain || class || collection || token)
 
 type NFOMemo struct {
 	Prefix  string
 	Version byte
 
-	Mask  uint64
-	Chain uuid.UUID // 16 bytes
-	Class []byte    // 64 bytes contract address
-	Group uuid.UUID // 16 bytes
-	Token []byte    // 64 bytes hash of content
+	Mask       uint64
+	Chain      uuid.UUID // 16 bytes
+	Class      []byte    // 64 bytes contract address
+	Collection uuid.UUID // 16 bytes
+	Token      []byte    // 64 bytes hash of content
 
 	Extra []byte
 }
 
-func BuildMintNFO(group string, token []byte, hash crypto.Hash) []byte {
-	gid := uuid.FromStringOrNil(group)
+func BuildMintNFO(collection string, token []byte, hash crypto.Hash) []byte {
+	gid := uuid.FromStringOrNil(collection)
 	nfo := NFOMemo{
-		Prefix:  NMPrefix,
-		Version: NMVersion,
-		Chain:   NMDefaultChain,
-		Class:   NMDefaultClass,
-		Group:   gid,
-		Token:   token,
-		Extra:   hash[:],
+		Prefix:     NMPrefix,
+		Version:    NMVersion,
+		Chain:      NMDefaultChain,
+		Class:      NMDefaultClass,
+		Collection: gid,
+		Token:      token,
+		Extra:      hash[:],
 	}
 	nfo.Mark([]int{0})
 	return nfo.Encode()
@@ -110,7 +109,7 @@ func (nm *NFOMemo) Encode() []byte {
 		nw.writeUint64(nm.Mask)
 		nw.writeUUID(nm.Chain)
 		nw.writeSlice(nm.Class)
-		nw.writeSlice(nm.Group.Bytes())
+		nw.writeSlice(nm.Collection.Bytes())
 		nw.writeSlice(nm.Token)
 		st := tokenBytesStrip(nm.Token)
 		if bytes.Compare(nm.Token, st) != 0 {
@@ -166,11 +165,11 @@ func DecodeNFOMemo(b []byte) (*NFOMemo, error) {
 		if bytes.Compare(nm.Class, NMDefaultClass) != 0 {
 			return nil, fmt.Errorf("invalid class %s", hex.EncodeToString(nm.Class))
 		}
-		group, err := nr.readBytes()
+		collection, err := nr.readBytes()
 		if err != nil {
 			return nil, err
 		}
-		nm.Group, err = uuid.FromBytes(group)
+		nm.Collection, err = uuid.FromBytes(collection)
 		if err != nil {
 			return nil, err
 		}

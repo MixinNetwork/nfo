@@ -9,62 +9,62 @@ import (
 )
 
 const (
-	prefixMintGroupPayload = "COLLECTIBLES:MINT:GROUP:"
-	prefixMintTokenPayload = "COLLECTIBLES:MINT:TOKEN:"
+	prefixMintCollectionPayload = "COLLECTIBLES:MINT:GROUP:"
+	prefixMintTokenPayload      = "COLLECTIBLES:MINT:TOKEN:"
 )
 
-func (bs *BadgerStore) WriteMintToken(group []byte, id []byte, user string) error {
+func (bs *BadgerStore) WriteMintToken(collection []byte, id []byte, user string) error {
 	return bs.db.Update(func(txn *badger.Txn) error {
-		old, err := bs.readMintToken(txn, group, id)
+		old, err := bs.readMintToken(txn, collection, id)
 		if err != nil {
 			return err
 		} else if old != nil {
 			panic(id)
 		}
 
-		og, err := bs.readMintGroup(txn, group)
+		og, err := bs.readMintCollection(txn, collection)
 		if err != nil {
 			return err
 		}
 		if og == nil {
-			og = &nft.Group{
-				Key:         group,
+			og = &nft.Collection{
+				Key:         collection,
 				Creator:     user,
 				Circulation: 0,
 			}
 		}
-		if og.Creator != user && bytes.Compare(group, nft.NMDefaultGroupKey) != 0 {
+		if og.Creator != user && bytes.Compare(collection, nft.NMDefaultCollectionKey) != 0 {
 			panic(og.Creator)
 		}
 		og.Circulation += 1
 
-		key := append([]byte(prefixMintGroupPayload), group...)
+		key := append([]byte(prefixMintCollectionPayload), collection...)
 		err = txn.Set(key, common.MsgpackMarshalPanic(og))
 		if err != nil {
 			return err
 		}
-		key = append([]byte(prefixMintTokenPayload), group...)
+		key = append([]byte(prefixMintTokenPayload), collection...)
 		key = append(key, id...)
 		return txn.Set(key, []byte{1})
 	})
 }
 
-func (bs *BadgerStore) ReadMintGroup(group []byte) (*nft.Group, error) {
+func (bs *BadgerStore) ReadMintCollection(collection []byte) (*nft.Collection, error) {
 	txn := bs.db.NewTransaction(false)
 	defer txn.Discard()
 
-	return bs.readMintGroup(txn, group)
+	return bs.readMintCollection(txn, collection)
 }
 
-func (bs *BadgerStore) ReadMintToken(group, token []byte) (*nft.Token, error) {
+func (bs *BadgerStore) ReadMintToken(collection, token []byte) (*nft.Token, error) {
 	txn := bs.db.NewTransaction(false)
 	defer txn.Discard()
 
-	return bs.readMintToken(txn, group, token)
+	return bs.readMintToken(txn, collection, token)
 }
 
-func (bs *BadgerStore) readMintGroup(txn *badger.Txn, group []byte) (*nft.Group, error) {
-	key := append([]byte(prefixMintGroupPayload), group...)
+func (bs *BadgerStore) readMintCollection(txn *badger.Txn, collection []byte) (*nft.Collection, error) {
+	key := append([]byte(prefixMintCollectionPayload), collection...)
 	item, err := txn.Get(key)
 	if err == badger.ErrKeyNotFound {
 		return nil, nil
@@ -75,13 +75,13 @@ func (bs *BadgerStore) readMintGroup(txn *badger.Txn, group []byte) (*nft.Group,
 	if err != nil {
 		return nil, err
 	}
-	var g nft.Group
+	var g nft.Collection
 	err = common.MsgpackUnmarshal(val, &g)
 	return &g, err
 }
 
-func (bs *BadgerStore) readMintToken(txn *badger.Txn, group, id []byte) (*nft.Token, error) {
-	key := append([]byte(prefixMintTokenPayload), group...)
+func (bs *BadgerStore) readMintToken(txn *badger.Txn, collection, id []byte) (*nft.Token, error) {
+	key := append([]byte(prefixMintTokenPayload), collection...)
 	key = append(key, id...)
 	_, err := txn.Get(key)
 	if err == badger.ErrKeyNotFound {
@@ -90,7 +90,7 @@ func (bs *BadgerStore) readMintToken(txn *badger.Txn, group, id []byte) (*nft.To
 		return nil, err
 	}
 	return &nft.Token{
-		Group: group,
-		Key:   id,
+		Collection: collection,
+		Key:        id,
 	}, nil
 }
