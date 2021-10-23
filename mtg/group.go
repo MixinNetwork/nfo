@@ -70,6 +70,14 @@ func BuildGroup(ctx context.Context, store Store, conf *Configuration) (*Group, 
 	return grp, nil
 }
 
+func (grp *Group) GetMembers() []string {
+	return grp.members
+}
+
+func (grp *Group) GetThreshold() int {
+	return grp.threshold
+}
+
 func (grp *Group) AddWorker(wkr Worker) {
 	grp.workers = append(grp.workers, wkr)
 }
@@ -77,6 +85,22 @@ func (grp *Group) AddWorker(wkr Worker) {
 func (grp *Group) Run(ctx context.Context) {
 	go grp.loopCollectibles(ctx)
 	grp.loopMultsigis(ctx)
+}
+
+func (grp *Group) loopMultsigis(ctx context.Context) {
+	for {
+		// drain all the utxos in the order of updated time
+		grp.drainOutputsFromNetwork(ctx, 100)
+
+		// handle the utxos queue by created time
+		grp.handleActionsQueue(ctx)
+
+		// sing any possible transactions from BuildTransaction
+		grp.signTransactions(ctx)
+
+		// publish all signed transactions to the mainnet
+		grp.publishTransactions(ctx)
+	}
 }
 
 func (grp *Group) loopCollectibles(ctx context.Context) {
@@ -87,37 +111,7 @@ func (grp *Group) loopCollectibles(ctx context.Context) {
 	}
 }
 
-func (grp *Group) loopMultsigis(ctx context.Context) {
-	for {
-		grp.drainOutputsFromNetwork(ctx, 100)
-		grp.handleActionsQueue(ctx)
-		grp.signTransactions(ctx)
-		grp.publishTransactions(ctx)
-	}
-}
-
-func (grp *Group) GetMembers() []string {
-	return grp.members
-}
-
-func (grp *Group) GetThreshold() int {
-	return grp.threshold
-}
-
-func (grp *Group) handleActionsQueue(ctx context.Context) error {
-	outputs, err := grp.store.ListActions(16)
-	if err != nil {
-		return err
-	}
-	for _, out := range outputs {
-		for _, wkr := range grp.workers {
-			wkr.ProcessOutput(ctx, out)
-		}
-		grp.writeAction(out, ActionStateDone)
-	}
-	return nil
-}
-
+// FIXME sign one transaction per loop, slow
 func (grp *Group) signTransactions(ctx context.Context) error {
 	txs, err := grp.store.ListTransactions(TransactionStateInitial, 1)
 	if err != nil || len(txs) != 1 {
@@ -135,7 +129,7 @@ func (grp *Group) signTransactions(ctx context.Context) error {
 
 	ver, _ := common.UnmarshalVersionedTransaction(raw)
 	extra, _ := base64.RawURLEncoding.DecodeString(string(ver.Extra))
-	var p MixinExtraPack
+	var p mixinExtraPack
 	err = common.MsgpackUnmarshal(extra, &p)
 	if p.T.String() != tx.TraceId {
 		panic(hex.EncodeToString(raw))
@@ -150,16 +144,10 @@ func (grp *Group) publishTransactions(ctx context.Context) error {
 		return err
 	}
 	for _, tx := range txs {
-		raw := hex.EncodeToString(tx.Raw)
-		h, err := grp.mixin.SendRawTransaction(ctx, raw)
+		snapshot, err := grp.snapshotTransaction(ctx, tx.Raw)
 		if err != nil {
 			return err
-		}
-		s, err := grp.mixin.GetRawTransaction(ctx, *h)
-		if err != nil {
-			return err
-		}
-		if s.Snapshot == nil || !s.Snapshot.HasValue() {
+		} else if !snapshot {
 			continue
 		}
 		tx.State = TransactionStateSnapshot
@@ -172,7 +160,7 @@ func (grp *Group) publishTransactions(ctx context.Context) error {
 }
 
 func (grp *Group) compactOutputs(ctx context.Context) {
-	panic(0)
+	panic("TODO")
 }
 
 func (grp *Group) signCollectibleTransactions(ctx context.Context) error {
@@ -204,16 +192,10 @@ func (grp *Group) publishCollectibleTransactions(ctx context.Context) error {
 		return err
 	}
 	for _, tx := range txs {
-		raw := hex.EncodeToString(tx.Raw)
-		h, err := grp.mixin.SendRawTransaction(ctx, raw)
+		snapshot, err := grp.snapshotTransaction(ctx, tx.Raw)
 		if err != nil {
 			return err
-		}
-		s, err := grp.mixin.GetRawTransaction(ctx, *h)
-		if err != nil {
-			return err
-		}
-		if s.Snapshot == nil || !s.Snapshot.HasValue() {
+		} else if !snapshot {
 			continue
 		}
 		tx.State = TransactionStateSnapshot
@@ -223,4 +205,17 @@ func (grp *Group) publishCollectibleTransactions(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+func (grp *Group) snapshotTransaction(ctx context.Context, b []byte) (bool, error) {
+	raw := hex.EncodeToString(b)
+	h, err := grp.mixin.SendRawTransaction(ctx, raw)
+	if err != nil {
+		return false, err
+	}
+	s, err := grp.mixin.GetRawTransaction(ctx, *h)
+	if err != nil {
+		return false, err
+	}
+	return s.Snapshot != nil && s.Snapshot.HasValue(), nil
 }

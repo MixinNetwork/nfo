@@ -15,7 +15,7 @@ const (
 
 func (grp *Group) drainOutputsFromNetwork(ctx context.Context, batch int) {
 	for {
-		checkpoint, err := grp.readOutputsDrainingCheckpoint(ctx)
+		checkpoint, err := grp.readDrainingCheckpoint(ctx, outputsDrainingKey)
 		if err != nil {
 			time.Sleep(3 * time.Second)
 			continue
@@ -27,8 +27,7 @@ func (grp *Group) drainOutputsFromNetwork(ctx context.Context, batch int) {
 		}
 
 		checkpoint = grp.processMultisigOutputs(checkpoint, outputs)
-
-		grp.writeOutputsDrainingCheckpoint(ctx, checkpoint)
+		grp.writeDrainingCheckpoint(ctx, outputsDrainingKey, checkpoint)
 		if len(outputs) < batch/2 {
 			break
 		}
@@ -43,7 +42,7 @@ func (grp *Group) processMultisigOutputs(checkpoint time.Time, outputs []*mixin.
 			panic(out.SignedTx)
 		}
 		if out.State == mixin.UTXOStateUnspent {
-			grp.writeOutput(out, "", nil)
+			grp.writeOutputOrPanic(out, "", nil)
 			continue
 		}
 		tx := &Transaction{
@@ -55,7 +54,7 @@ func (grp *Group) processMultisigOutputs(checkpoint time.Time, outputs []*mixin.
 			out.State = mixin.UTXOStateSpent
 			tx.State = TransactionStateSigned
 		}
-		grp.writeOutput(out, tx.TraceId, tx)
+		grp.writeOutputOrPanic(out, tx.TraceId, tx)
 	}
 
 	for _, utxo := range outputs {
@@ -65,7 +64,7 @@ func (grp *Group) processMultisigOutputs(checkpoint time.Time, outputs []*mixin.
 	return checkpoint
 }
 
-func (grp *Group) writeOutput(utxo *mixin.MultisigUTXO, traceId string, tx *Transaction) {
+func (grp *Group) writeOutputOrPanic(utxo *mixin.MultisigUTXO, traceId string, tx *Transaction) {
 	out := NewOutputFromMultisig(utxo)
 	err := grp.store.WriteOutput(out, traceId)
 	if err != nil {
@@ -87,27 +86,9 @@ func (grp *Group) writeOutput(utxo *mixin.MultisigUTXO, traceId string, tx *Tran
 	}
 }
 
-func (grp *Group) readOutputsDrainingCheckpoint(ctx context.Context) (time.Time, error) {
-	key := []byte(outputsDrainingKey)
-	val, err := grp.store.ReadProperty(key)
-	if err != nil || len(val) == 0 {
-		return time.Time{}, nil
-	}
-	ts := int64(binary.BigEndian.Uint64(val))
-	return time.Unix(0, ts), nil
-}
-
-func (grp *Group) writeOutputsDrainingCheckpoint(ctx context.Context, ckpt time.Time) error {
-	val := make([]byte, 8)
-	key := []byte(outputsDrainingKey)
-	ts := uint64(ckpt.UnixNano())
-	binary.BigEndian.PutUint64(val, ts)
-	return grp.store.WriteProperty(key, val)
-}
-
 func (grp *Group) drainCollectibleOutputsFromNetwork(ctx context.Context, batch int) {
 	for {
-		checkpoint, err := grp.readCollectibleOutputsDrainingCheckpoint(ctx)
+		checkpoint, err := grp.readDrainingCheckpoint(ctx, collectibleOutputsDrainingKey)
 		if err != nil {
 			time.Sleep(3 * time.Second)
 			continue
@@ -119,8 +100,7 @@ func (grp *Group) drainCollectibleOutputsFromNetwork(ctx context.Context, batch 
 		}
 
 		checkpoint = grp.processCollectibleOutputs(checkpoint, outputs)
-
-		grp.writeCollectibleOutputsDrainingCheckpoint(ctx, checkpoint)
+		grp.writeDrainingCheckpoint(ctx, collectibleOutputsDrainingKey, checkpoint)
 		if len(outputs) < batch/2 {
 			break
 		}
@@ -135,7 +115,7 @@ func (grp *Group) processCollectibleOutputs(checkpoint time.Time, outputs []*Col
 			panic(out.SignedTx)
 		}
 		if out.State == OutputStateUnspent {
-			grp.writeCollectibleOutput(out, "", nil)
+			grp.writeCollectibleOutputOrPanic(out, "", nil)
 			continue
 		}
 		tx := &CollectibleTransaction{
@@ -148,13 +128,13 @@ func (grp *Group) processCollectibleOutputs(checkpoint time.Time, outputs []*Col
 			out.State = OutputStateSpent
 			tx.State = TransactionStateSigned
 		}
-		grp.writeCollectibleOutput(out, tx.TraceId, tx)
+		grp.writeCollectibleOutputOrPanic(out, tx.TraceId, tx)
 	}
 
 	return checkpoint
 }
 
-func (grp *Group) writeCollectibleOutput(out *CollectibleOutput, traceId string, tx *CollectibleTransaction) {
+func (grp *Group) writeCollectibleOutputOrPanic(out *CollectibleOutput, traceId string, tx *CollectibleTransaction) {
 	err := grp.store.WriteCollectibleOutput(out, traceId)
 	if err != nil {
 		panic(err)
@@ -175,9 +155,8 @@ func (grp *Group) writeCollectibleOutput(out *CollectibleOutput, traceId string,
 	}
 }
 
-func (grp *Group) readCollectibleOutputsDrainingCheckpoint(ctx context.Context) (time.Time, error) {
-	key := []byte(collectibleOutputsDrainingKey)
-	val, err := grp.store.ReadProperty(key)
+func (grp *Group) readDrainingCheckpoint(ctx context.Context, key string) (time.Time, error) {
+	val, err := grp.store.ReadProperty([]byte(key))
 	if err != nil || len(val) == 0 {
 		return time.Time{}, nil
 	}
@@ -185,10 +164,9 @@ func (grp *Group) readCollectibleOutputsDrainingCheckpoint(ctx context.Context) 
 	return time.Unix(0, ts), nil
 }
 
-func (grp *Group) writeCollectibleOutputsDrainingCheckpoint(ctx context.Context, ckpt time.Time) error {
+func (grp *Group) writeDrainingCheckpoint(ctx context.Context, key string, ckpt time.Time) error {
 	val := make([]byte, 8)
-	key := []byte(collectibleOutputsDrainingKey)
 	ts := uint64(ckpt.UnixNano())
 	binary.BigEndian.PutUint64(val, ts)
-	return grp.store.WriteProperty(key, val)
+	return grp.store.WriteProperty([]byte(key), val)
 }

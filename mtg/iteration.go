@@ -7,6 +7,9 @@ const (
 	IterationActionRemove = 12
 )
 
+// a node joins or leaves the group with an iteration
+// this is for the evolution mechanism of MTG
+// TODO not implemented yet
 type Iteration struct {
 	Action    int
 	NodeId    string

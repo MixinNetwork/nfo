@@ -129,28 +129,16 @@ func (grp *Group) signCollectibleMintTransaction(ctx context.Context, tx *Collec
 		return nil, fmt.Errorf("empty outputs %s", tx.Amount)
 	}
 
-	ver := decodeCollectibleTransaction(outputs[0].SignedTx)
-	if ver == nil {
-		ver, err = grp.buildRawCollectibleMintTransaction(ctx, tx, outputs)
-		if err != nil {
-			return nil, err
-		}
-	} else if ver.AggregatedSignature != nil {
-		return ver.Marshal(), nil
-	}
-
-	raw := hex.EncodeToString(ver.AsLatestVersion().Marshal())
-	req, err := grp.CreateCollectibleRequest(ctx, mixin.MultisigActionSign, raw)
+	ver, err := grp.buildRawCollectibleMintTransaction(ctx, tx, outputs)
 	if err != nil {
 		return nil, err
 	}
-
-	for _, out := range outputs {
-		out.State = OutputStateSigned
-		out.SignedBy = ver.AsLatestVersion().PayloadHash().String()
-		out.SignedTx = raw
+	if ver.AggregatedSignature != nil {
+		return ver.Marshal(), nil
 	}
-	err = grp.store.WriteCollectibleOutputs(outputs, tx.TraceId)
+
+	raw := hex.EncodeToString(ver.Marshal())
+	req, err := grp.CreateCollectibleRequest(ctx, mixin.MultisigActionSign, raw)
 	if err != nil {
 		return nil, err
 	}
@@ -159,10 +147,25 @@ func (grp *Group) signCollectibleMintTransaction(ctx context.Context, tx *Collec
 	if err != nil {
 		return nil, err
 	}
+
+	for _, out := range outputs {
+		out.State = OutputStateSigned
+		out.SignedBy = ver.PayloadHash().String()
+		out.SignedTx = req.RawTransaction
+	}
+	err = grp.store.WriteCollectibleOutputs(outputs, tx.TraceId)
+	if err != nil {
+		return nil, err
+	}
 	return hex.DecodeString(req.RawTransaction)
 }
 
 func (grp *Group) buildRawCollectibleMintTransaction(ctx context.Context, tx *CollectibleTransaction, outputs []*CollectibleOutput) (*common.VersionedTransaction, error) {
+	old := decodeCollectibleTransaction(outputs[0].SignedTx)
+	if old != nil {
+		return old, nil
+	}
+
 	if tx.Amount != "1" {
 		panic(tx.Amount)
 	}

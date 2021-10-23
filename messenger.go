@@ -50,8 +50,10 @@ func (rw *MessengerWorker) ProcessOutput(ctx context.Context, out *mtg.Output) {
 		return
 	}
 	receivers := []string{out.Sender}
+	memo := "REFUND#" + out.Amount.String()
 	traceId := mixin.UniqueConversationID(out.UTXOID, "refund")
-	err := rw.grp.BuildTransaction(ctx, out.AssetID, receivers, 1, out.Amount.String(), "refund", traceId)
+	amount := out.Amount.Mul(decimal.NewFromFloat(0.7)).String()
+	err := rw.grp.BuildTransaction(ctx, out.AssetID, receivers, 1, amount, memo, traceId)
 	if err != nil {
 		panic(err)
 	}
