@@ -83,7 +83,7 @@ func (grp *Group) AddWorker(wkr Worker) {
 }
 
 func (grp *Group) Run(ctx context.Context) {
-	logger.Println("Group.run(v0.0.1)")
+	logger.Println("Group.Run(v0.0.1)")
 	go grp.loopCollectibles(ctx)
 	grp.loopMultsigis(ctx)
 }

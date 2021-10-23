@@ -2,7 +2,9 @@ package store
 
 import (
 	"context"
+	"time"
 
+	"github.com/MixinNetwork/mixin/logger"
 	"github.com/dgraph-io/badger/v3"
 )
 
@@ -13,6 +15,19 @@ type BadgerStore struct {
 func OpenBadger(ctx context.Context, path string) (*BadgerStore, error) {
 	opts := badger.DefaultOptions(path)
 	db, err := badger.Open(opts)
+
+	go func() {
+		for {
+			lsm, vlog := db.Size()
+			logger.Printf("Badger LSM %d VLOG %d\n", lsm, vlog)
+			if lsm > 1024*1024*8 || vlog > 1024*1024*32 {
+				err := db.RunValueLogGC(0.5)
+				logger.Printf("Badger RunValueLogGC %v\n", err)
+			}
+			time.Sleep(5 * time.Minute)
+		}
+	}()
+
 	return &BadgerStore{
 		db: db,
 	}, err
