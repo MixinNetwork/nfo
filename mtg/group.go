@@ -83,7 +83,7 @@ func (grp *Group) AddWorker(wkr Worker) {
 }
 
 func (grp *Group) Run(ctx context.Context) {
-	logger.Println("Group.Run(v0.0.2)")
+	logger.Printf("Group(%s, %d).Run(v0.0.2)\n", mixin.HashMembers(grp.members), grp.threshold)
 	go grp.loopCollectibles(ctx)
 	grp.loopMultsigis(ctx)
 }
