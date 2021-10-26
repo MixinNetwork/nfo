@@ -63,13 +63,13 @@ func (rw *MessengerWorker) ProcessOutput(ctx context.Context, out *mtg.Output) {
 }
 
 func (rw *MessengerWorker) ProcessCollectibleOutput(ctx context.Context, out *mtg.CollectibleOutput) {
-	logger.Verbosef("MessengerWorker.ProcessCollectibleOutput(%v)", *out)
+	logger.Verbosef("MessengerWorker.ProcessCollectibleOutput(%v)\n", *out)
 }
 
 func (rw *MessengerWorker) loop(ctx context.Context) {
 	for {
 		err := rw.client.LoopBlaze(context.Background(), rw)
-		logger.Printf("LoopBlaze %v\n", err)
+		logger.Printf("LoopBlaze() => %v\n", err)
 		if ctx.Err() != nil {
 			break
 		}
@@ -78,27 +78,27 @@ func (rw *MessengerWorker) loop(ctx context.Context) {
 }
 
 func (rw *MessengerWorker) OnMessage(ctx context.Context, msg *mixin.MessageView, userId string) error {
-	code := "mixin://codes/"
+	tt := "%s mixin://codes/%s"
 	if msg.Category == mixin.MessageCategoryPlainSticker {
 		pid, err := rw.handleMintMessage(ctx, msg.MessageID)
 		if err != nil {
 			return nil
 		}
-		code = code + pid
+		tt = fmt.Sprintf(tt, "non fungible token mint test", pid)
 	} else if msg.Category == mixin.MessageCategoryPlainText {
 		pid, err := rw.handleRefundMessage(ctx, msg.MessageID)
 		if err != nil {
 			return nil
 		}
-		code = code + pid
+		tt = fmt.Sprintf(tt, "partial refund test", pid)
 	} else {
 		return nil
 	}
 	mr := &mixin.MessageRequest{
 		ConversationID: msg.ConversationID,
 		Category:       mixin.MessageCategoryPlainText,
-		MessageID:      mixin.UniqueConversationID(code, code),
-		Data:           base64.RawURLEncoding.EncodeToString([]byte(code)),
+		MessageID:      mixin.UniqueConversationID(msg.MessageID, msg.MessageID),
+		Data:           base64.RawURLEncoding.EncodeToString([]byte(tt)),
 	}
 	return rw.client.SendMessage(ctx, mr)
 }

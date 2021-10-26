@@ -30,7 +30,7 @@ func NewMintWorker(grp *mtg.Group, store Store) *MintWorker {
 }
 
 func (mw *MintWorker) ProcessOutput(ctx context.Context, out *mtg.Output) {
-	logger.Verbosef("MintWorker.ProcessOutput(%v)", *out)
+	logger.Verbosef("MintWorker.ProcessOutput(%v)\n", *out)
 	min, err := decimal.NewFromString(MintMinimumCost)
 	if err != nil {
 		return
@@ -75,12 +75,12 @@ func (mw *MintWorker) ProcessOutput(ctx context.Context, out *mtg.Output) {
 		panic(err)
 	}
 	err = mw.grp.BuildCollectibleMintTransaction(ctx, out.Sender, extra)
-	logger.Verbosef("MintWorker.BuildCollectibleMintTransaction(%s, %s)", out.Sender, hex.EncodeToString(extra))
+	logger.Verbosef("MintWorker.BuildCollectibleMintTransaction(%s, %s)\n", out.Sender, hex.EncodeToString(extra))
 	if err != nil {
 		panic(err)
 	}
 }
 
 func (mw *MintWorker) ProcessCollectibleOutput(ctx context.Context, out *mtg.CollectibleOutput) {
-	logger.Verbosef("MintWorker.ProcessCollectibleOutput(%v)", *out)
+	logger.Verbosef("MintWorker.ProcessCollectibleOutput(%v)\n", *out)
 }

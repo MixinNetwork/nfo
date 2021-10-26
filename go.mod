@@ -3,7 +3,7 @@ module github.com/MixinNetwork/nfo
 go 1.17
 
 require (
-	github.com/MixinNetwork/mixin v0.13.6
+	github.com/MixinNetwork/mixin v0.13.7
 	github.com/dgraph-io/badger/v3 v3.2103.2
 	github.com/fox-one/mixin-sdk-go v1.5.3
 	github.com/gofrs/uuid v4.1.0+incompatible
