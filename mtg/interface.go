@@ -33,11 +33,16 @@ type Store interface {
 	ListCollectibleOutputsForTransaction(traceId string) ([]*CollectibleOutput, error)
 	ListCollectibleOutputsForToken(state, tokenId string, limit int) ([]*CollectibleOutput, error)
 
+	WriteCollectibleAction(act *Action) error
+	ListCollectibleActions(limit int) ([]*CollectibleOutput, error)
+
 	WriteCollectibleTransaction(traceId string, tx *CollectibleTransaction) error
 	ReadCollectibleTransaction(traceId string) (*CollectibleTransaction, error)
+	ReadCollectibleTransactionByHash(hash crypto.Hash) (*CollectibleTransaction, error)
 	ListCollectibleTransactions(state int, limit int) ([]*CollectibleTransaction, error)
 }
 
 type Worker interface {
 	ProcessOutput(context.Context, *Output)
+	ProcessCollectibleOutput(context.Context, *CollectibleOutput)
 }

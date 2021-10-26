@@ -32,9 +32,34 @@ func (grp *Group) handleActionsQueue(ctx context.Context) error {
 	return nil
 }
 
+func (grp *Group) handleCollectibleActionsQueue(ctx context.Context) error {
+	outputs, err := grp.store.ListCollectibleActions(16)
+	if err != nil {
+		return err
+	}
+	for _, out := range outputs {
+		for _, wkr := range grp.workers {
+			wkr.ProcessCollectibleOutput(ctx, out)
+		}
+		grp.writeCollectibleAction(out, ActionStateDone)
+	}
+	return nil
+}
+
 func (grp *Group) writeAction(out *Output, state int) {
 	err := grp.store.WriteAction(&Action{
 		UTXOID:    out.UTXOID,
+		CreatedAt: out.CreatedAt,
+		State:     state,
+	})
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (grp *Group) writeCollectibleAction(out *CollectibleOutput, state int) {
+	err := grp.store.WriteCollectibleAction(&Action{
+		UTXOID:    out.OutputId,
 		CreatedAt: out.CreatedAt,
 		State:     state,
 	})

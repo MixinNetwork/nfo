@@ -107,6 +107,7 @@ func (grp *Group) loopMultsigis(ctx context.Context) {
 func (grp *Group) loopCollectibles(ctx context.Context) {
 	for {
 		grp.drainCollectibleOutputsFromNetwork(ctx, 100)
+		grp.handleCollectibleActionsQueue(ctx)
 		grp.signCollectibleTransactions(ctx)
 		grp.publishCollectibleTransactions(ctx)
 	}
@@ -176,11 +177,12 @@ func (grp *Group) signCollectibleTransactions(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	ver, _ := common.UnmarshalVersionedTransaction(raw)
 	tx.Raw = raw
+	tx.Hash = ver.PayloadHash()
 	tx.UpdatedAt = time.Now()
 	tx.State = TransactionStateSigning
 
-	ver, _ := common.UnmarshalVersionedTransaction(raw)
 	if nfoTraceId(ver.Extra) != tx.TraceId {
 		panic(hex.EncodeToString(raw))
 	}

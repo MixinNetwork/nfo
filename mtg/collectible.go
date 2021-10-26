@@ -48,6 +48,7 @@ type CollectibleTransaction struct {
 	Amount    string
 	NFO       []byte
 	Raw       []byte
+	Hash      crypto.Hash
 	UpdatedAt time.Time
 }
 

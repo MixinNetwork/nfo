@@ -80,3 +80,7 @@ func (mw *MintWorker) ProcessOutput(ctx context.Context, out *mtg.Output) {
 		panic(err)
 	}
 }
+
+func (mw *MintWorker) ProcessCollectibleOutput(ctx context.Context, out *mtg.CollectibleOutput) {
+	logger.Verbosef("MintWorker.ProcessCollectibleOutput(%v)", *out)
+}

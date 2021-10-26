@@ -129,6 +129,7 @@ func (grp *Group) processCollectibleOutputs(checkpoint time.Time, outputs []*Col
 			TraceId: nfoTraceId(ver.Extra),
 			State:   TransactionStateInitial,
 			Raw:     ver.Marshal(),
+			Hash:    ver.PayloadHash(),
 			NFO:     ver.Extra,
 		}
 		if ver.AggregatedSignature != nil {
@@ -138,6 +139,15 @@ func (grp *Group) processCollectibleOutputs(checkpoint time.Time, outputs []*Col
 		grp.writeCollectibleOutputOrPanic(out, tx.TraceId, tx)
 	}
 
+	for _, out := range outputs {
+		old, err := grp.store.ReadCollectibleTransactionByHash(out.TransactionHash)
+		if err != nil {
+			panic(out.TransactionHash)
+		} else if old != nil {
+			continue
+		}
+		grp.writeCollectibleAction(out, ActionStateInitial)
+	}
 	return checkpoint
 }
 

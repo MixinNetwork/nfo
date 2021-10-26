@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/MixinNetwork/mixin/crypto"
+	"github.com/MixinNetwork/mixin/logger"
 	"github.com/MixinNetwork/nfo/mtg"
 	"github.com/MixinNetwork/nfo/nft"
 	"github.com/fox-one/mixin-sdk-go"
@@ -61,10 +62,14 @@ func (rw *MessengerWorker) ProcessOutput(ctx context.Context, out *mtg.Output) {
 	}
 }
 
+func (rw *MessengerWorker) ProcessCollectibleOutput(ctx context.Context, out *mtg.CollectibleOutput) {
+	logger.Verbosef("MessengerWorker.ProcessCollectibleOutput(%v)", *out)
+}
+
 func (rw *MessengerWorker) loop(ctx context.Context) {
 	for {
 		err := rw.client.LoopBlaze(context.Background(), rw)
-		fmt.Println("LoopBlaze", err)
+		logger.Printf("LoopBlaze %v\n", err)
 		if ctx.Err() != nil {
 			break
 		}
