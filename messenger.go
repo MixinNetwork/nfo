@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"fmt"
+	"math/big"
 	"math/rand"
 	"time"
 
@@ -105,12 +107,12 @@ func (rw *MessengerWorker) handleMintMessage(ctx context.Context, msgId string) 
 	if err != nil {
 		return "", err
 	}
-	mid, err := uuid.FromString(msgId)
+	tokenId, err := rw.generateTokenId(msgId)
 	if err != nil {
 		return "", err
 	}
 	contentHash := crypto.NewHash([]byte("TEST:" + msgId))
-	nfo := nft.BuildMintNFO(uuid.Nil.String(), mid.Bytes(), contentHash)
+	nfo := nft.BuildMintNFO(uuid.Nil.String(), tokenId, contentHash)
 	pr := mixin.TransferInput{
 		AssetID: nft.MintAssetId,
 		Amount:  amount,
@@ -144,4 +146,18 @@ func (rw *MessengerWorker) handleRefundMessage(ctx context.Context, msgId string
 		return "", err
 	}
 	return payment.CodeID, nil
+}
+
+func (rw *MessengerWorker) generateTokenId(msgId string) ([]byte, error) {
+	for {
+		mid, err := uuid.FromString(msgId)
+		if err != nil {
+			return nil, err
+		}
+		b := new(big.Int).SetBytes(mid.Bytes()).Bytes()
+		if bytes.Compare(b, mid.Bytes()) == 0 {
+			return b, nil
+		}
+		msgId = mixin.UniqueConversationID(msgId, msgId)
+	}
 }
