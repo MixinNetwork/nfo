@@ -37,6 +37,10 @@ func (bs *BadgerStore) Close() error {
 	return bs.db.Close()
 }
 
+func (bs *BadgerStore) Badger() *badger.DB {
+	return bs.db
+}
+
 func (bs *BadgerStore) WriteProperty(key, val []byte) error {
 	return bs.db.Update(func(txn *badger.Txn) error {
 		return txn.Set(key, val)
