@@ -214,6 +214,7 @@ func (grp *Group) publishCollectibleTransactions(ctx context.Context) error {
 func (grp *Group) snapshotTransaction(ctx context.Context, b []byte) (bool, error) {
 	raw := hex.EncodeToString(b)
 	h, err := grp.mixin.SendRawTransaction(ctx, raw)
+	logger.Verbosef("Group.snapshotTransaction(%s) => %s, %v", raw, h, err)
 	if err != nil {
 		return false, err
 	}
