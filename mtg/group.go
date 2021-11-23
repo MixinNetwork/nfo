@@ -5,10 +5,12 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/MixinNetwork/mixin/common"
+	"github.com/MixinNetwork/mixin/crypto"
 	"github.com/MixinNetwork/mixin/logger"
 	"github.com/fox-one/mixin-sdk-go"
 )
@@ -18,6 +20,7 @@ type Group struct {
 	store   Store
 	workers []Worker
 
+	id        string
 	members   []string
 	epoch     time.Time
 	threshold int
@@ -51,6 +54,7 @@ func BuildGroup(ctx context.Context, store Store, conf *Configuration) (*Group, 
 		mixin: client,
 		store: store,
 		pin:   conf.App.PIN,
+		id:    generateGenesisId(conf),
 	}
 
 	for _, id := range conf.Genesis.Members {
@@ -68,6 +72,10 @@ func BuildGroup(ctx context.Context, store Store, conf *Configuration) (*Group, 
 	grp.threshold = threshold
 	grp.epoch = epoch
 	return grp, nil
+}
+
+func (grp *Group) GenesisId() string {
+	return grp.id
 }
 
 func (grp *Group) GetMembers() []string {
@@ -223,4 +231,13 @@ func (grp *Group) snapshotTransaction(ctx context.Context, b []byte) (bool, erro
 		return false, err
 	}
 	return s.Snapshot != nil && s.Snapshot.HasValue(), nil
+}
+
+func generateGenesisId(conf *Configuration) string {
+	sort.Slice(conf.Genesis.Members, func(i, j int) bool {
+		return conf.Genesis.Members[i] < conf.Genesis.Members[j]
+	})
+	id := strings.Join(conf.Genesis.Members, "")
+	id = fmt.Sprintf("%s:%d:%d", id, conf.Genesis.Threshold, conf.Genesis.Timestamp)
+	return crypto.NewHash([]byte(id)).String()
 }

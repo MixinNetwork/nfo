@@ -45,7 +45,7 @@ func (grp *Group) BuildTransaction(ctx context.Context, assetId string, receiver
 		return fmt.Errorf("invalid amount %s", amount)
 	}
 
-	// ensure valid memo and trace id
+	// TODO ensure valid memo and trace id
 	encodeMixinExtra(traceId, memo)
 
 	for _, r := range receivers {

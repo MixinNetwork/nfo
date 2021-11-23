@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"time"
 
+	"github.com/MixinNetwork/mixin/logger"
 	"github.com/fox-one/mixin-sdk-go"
 )
 
@@ -37,6 +38,7 @@ func (grp *Group) drainOutputsFromNetwork(ctx context.Context, batch int) {
 func (grp *Group) processMultisigOutputs(checkpoint time.Time, outputs []*mixin.MultisigUTXO) time.Time {
 	for _, out := range outputs {
 		checkpoint = out.UpdatedAt
+		logger.Verbosef("Group.processMultisigOutputs(%s) => %s", out.UTXOID, out.SignedTx)
 		ver, extra := decodeTransactionWithExtra(out.SignedTx)
 		if out.SignedTx != "" && ver == nil {
 			panic(out.SignedTx)
