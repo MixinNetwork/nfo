@@ -39,6 +39,9 @@ func (grp *Group) processMultisigOutputs(checkpoint time.Time, outputs []*mixin.
 	for _, out := range outputs {
 		checkpoint = out.UpdatedAt
 		logger.Verbosef("Group.processMultisigOutputs(%s) => %s", out.UTXOID, out.SignedTx)
+		if out.UpdatedAt.Before(grp.epoch) {
+			continue
+		}
 		ver, extra := decodeTransactionWithExtra(out.SignedTx)
 		if out.SignedTx != "" && ver == nil {
 			panic(out.SignedTx)
@@ -61,6 +64,9 @@ func (grp *Group) processMultisigOutputs(checkpoint time.Time, outputs []*mixin.
 	}
 
 	for _, utxo := range outputs {
+		if utxo.UpdatedAt.Before(grp.epoch) {
+			continue
+		}
 		out := NewOutputFromMultisig(utxo)
 		old, err := grp.store.ReadTransactionByHash(out.TransactionHash)
 		if err != nil {
