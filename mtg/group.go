@@ -15,6 +15,10 @@ import (
 	"github.com/fox-one/mixin-sdk-go"
 )
 
+const (
+	groupGenesisId = "group-genesis-id"
+)
+
 type Group struct {
 	mixin   *mixin.Client
 	store   Store
@@ -55,6 +59,18 @@ func BuildGroup(ctx context.Context, store Store, conf *Configuration) (*Group, 
 		store: store,
 		pin:   conf.App.PIN,
 		id:    generateGenesisId(conf),
+	}
+
+	oid, err := store.ReadProperty([]byte(groupGenesisId))
+	if err != nil {
+		return nil, err
+	}
+	if len(oid) > 0 && string(oid) != grp.id {
+		return nil, fmt.Errorf("malformed group genesis id %s %s", string(oid), grp.id)
+	}
+	err = store.WriteProperty([]byte(groupGenesisId), []byte(grp.id))
+	if err != nil {
+		return nil, err
 	}
 
 	for _, id := range conf.Genesis.Members {
