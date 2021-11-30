@@ -51,6 +51,7 @@ func (grp *Group) processMultisigOutputs(checkpoint time.Time, outputs []*mixin.
 			continue
 		}
 		tx := &Transaction{
+			GroupId: extra.G,
 			TraceId: extra.T.String(),
 			State:   TransactionStateInitial,
 			Raw:     ver.Marshal(),
