@@ -81,7 +81,7 @@ func (grp *Group) processMultisigOutputs(checkpoint time.Time, outputs []*mixin.
 
 func (grp *Group) writeOutputOrPanic(utxo *mixin.MultisigUTXO, traceId string, tx *Transaction) {
 	out := NewOutputFromMultisig(utxo)
-	p := decodeMixinExtra(utxo.Memo)
+	p := DecodeMixinExtra(utxo.Memo)
 	if p != nil && p.G != "" {
 		out.GroupId = p.G
 	} else if grp.grouper != nil {

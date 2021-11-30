@@ -184,14 +184,14 @@ func decodeTransactionWithExtra(s string) (*common.VersionedTransaction, *mixinE
 	if err != nil {
 		return nil, nil
 	}
-	p := decodeMixinExtra(string(tx.Extra))
+	p := DecodeMixinExtra(string(tx.Extra))
 	if p == nil {
 		return nil, nil
 	}
 	return tx, p
 }
 
-func decodeMixinExtra(memo string) *mixinExtraPack {
+func DecodeMixinExtra(memo string) *mixinExtraPack {
 	extra, err := base64.RawURLEncoding.DecodeString(memo)
 	if err != nil {
 		return nil

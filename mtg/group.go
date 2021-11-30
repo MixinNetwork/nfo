@@ -159,7 +159,7 @@ func (grp *Group) signTransactions(ctx context.Context) error {
 	tx.UpdatedAt = time.Now()
 	tx.State = TransactionStateSigning
 
-	p := decodeMixinExtra(string(ver.Extra))
+	p := DecodeMixinExtra(string(ver.Extra))
 	if p.T.String() != tx.TraceId {
 		panic(hex.EncodeToString(raw))
 	}
