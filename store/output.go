@@ -10,9 +10,8 @@ import (
 
 const (
 	prefixOutputPayload     = "OUTPUT:PAYLOAD:"
-	prefixOutputState       = "OUTPUT:STATE:"
 	prefixOutputTransaction = "OUTPUT:TRASACTION:"
-	prefixOutputAsset       = "OUTPUT:ASSET:"
+	prefixOutputGroupAsset  = "OUTPUT:ASSET:"
 )
 
 func (bs *BadgerStore) WriteOutput(utxo *mtg.Output, traceId string) error {
@@ -33,18 +32,13 @@ func (bs *BadgerStore) WriteOutputs(utxos []*mtg.Output, traceId string) error {
 	})
 }
 
-func (bs *BadgerStore) ListOutputs(state string, limit int) ([]*mtg.Output, error) {
-	prefix := prefixOutputState + state
-	return bs.listOutputs(prefix, limit)
-}
-
 func (bs *BadgerStore) ListOutputsForTransaction(traceId string) ([]*mtg.Output, error) {
 	prefix := prefixOutputTransaction + traceId
 	return bs.listOutputs(prefix, 0)
 }
 
-func (bs *BadgerStore) ListOutputsForAsset(state, assetId string, limit int) ([]*mtg.Output, error) {
-	prefix := prefixOutputAsset + state + assetId
+func (bs *BadgerStore) ListOutputsForAsset(groupId, state, assetId string, limit int) ([]*mtg.Output, error) {
+	prefix := prefixOutputGroupAsset + state + assetId + groupId
 	return bs.listOutputs(prefix, limit)
 }
 
@@ -87,13 +81,7 @@ func (bs *BadgerStore) writeOutput(txn *badger.Txn, utxo *mtg.Output, traceId st
 		return err
 	}
 
-	key = buildOutputTimedKey(utxo, prefixOutputState, traceId)
-	err = txn.Set(key, []byte{1})
-	if err != nil {
-		return err
-	}
-
-	key = buildOutputTimedKey(utxo, prefixOutputAsset, traceId)
+	key = buildOutputTimedKey(utxo, prefixOutputGroupAsset, traceId)
 	err = txn.Set(key, []byte{1})
 	if err != nil {
 		return err
@@ -121,13 +109,7 @@ func (bs *BadgerStore) resetOldOutput(txn *badger.Txn, utxo *mtg.Output, traceId
 		panic(old.SignedBy)
 	}
 
-	key := buildOutputTimedKey(old, prefixOutputState, traceId)
-	err = txn.Delete(key)
-	if err != nil {
-		return nil, err
-	}
-
-	key = buildOutputTimedKey(old, prefixOutputAsset, traceId)
+	key := buildOutputTimedKey(old, prefixOutputGroupAsset, traceId)
 	err = txn.Delete(key)
 	if err != nil {
 		return nil, err
@@ -159,10 +141,8 @@ func buildOutputTimedKey(out *mtg.Output, prefix string, traceId string) []byte 
 	ts := out.UpdatedAt.UnixNano()
 	binary.BigEndian.PutUint64(buf, uint64(ts))
 	switch prefix {
-	case prefixOutputState:
-		prefix = prefix + out.StateName()
-	case prefixOutputAsset:
-		prefix = prefix + out.StateName() + out.AssetID
+	case prefixOutputGroupAsset:
+		prefix = prefix + out.StateName() + out.AssetID + out.GroupId
 	case prefixOutputTransaction:
 		prefix = prefix + traceId
 	default:

@@ -22,6 +22,7 @@ const (
 )
 
 type Transaction struct {
+	GroupId   string
 	TraceId   string
 	State     int
 	AssetId   string
@@ -35,7 +36,7 @@ type Transaction struct {
 }
 
 // the app should decide a unique trace id so that the MTG will not double spend
-func (grp *Group) BuildTransaction(ctx context.Context, assetId string, receivers []string, threshold int, amount, memo string, traceId string) error {
+func (grp *Group) BuildTransaction(ctx context.Context, assetId string, receivers []string, threshold int, amount, memo string, traceId, groupId string) error {
 	if threshold <= 0 || threshold > len(receivers) {
 		return fmt.Errorf("invalid receivers threshold %d/%d", threshold, len(receivers))
 	}
@@ -46,7 +47,7 @@ func (grp *Group) BuildTransaction(ctx context.Context, assetId string, receiver
 	}
 
 	// TODO ensure valid memo and trace id
-	encodeMixinExtra(traceId, memo)
+	encodeMixinExtra(groupId, traceId, memo)
 
 	for _, r := range receivers {
 		id, _ := uuid.FromString(r)
@@ -59,6 +60,7 @@ func (grp *Group) BuildTransaction(ctx context.Context, assetId string, receiver
 		return err
 	}
 	tx := &Transaction{
+		GroupId:   groupId,
 		TraceId:   traceId,
 		State:     TransactionStateInitial,
 		AssetId:   assetId,
@@ -77,7 +79,7 @@ func (grp *Group) signTransaction(ctx context.Context, tx *Transaction) ([]byte,
 		return nil, err
 	}
 	if len(outputs) == 0 {
-		outputs, err = grp.store.ListOutputsForAsset(mixin.UTXOStateUnspent, tx.AssetId, 36)
+		outputs, err = grp.store.ListOutputsForAsset(tx.GroupId, mixin.UTXOStateUnspent, tx.AssetId, 36)
 	}
 	if err != nil {
 		return nil, err
@@ -123,7 +125,7 @@ func (grp *Group) buildRawTransaction(ctx context.Context, tx *Transaction, outp
 		return old, nil
 	}
 	ver := common.NewTransaction(crypto.NewHash([]byte(tx.AssetId)))
-	ver.Extra = []byte(encodeMixinExtra(tx.TraceId, tx.Memo))
+	ver.Extra = []byte(encodeMixinExtra(tx.GroupId, tx.TraceId, tx.Memo))
 
 	var total common.Integer
 	for _, out := range outputs {
@@ -169,6 +171,7 @@ func (grp *Group) buildRawTransaction(ctx context.Context, tx *Transaction, outp
 // all the transactions sent by the MTG is encoded by base64(msgpack(mep))
 type mixinExtraPack struct {
 	T uuid.UUID
+	G string `msgpack:",omitempty"`
 	M string `msgpack:",omitempty"`
 }
 
@@ -193,12 +196,12 @@ func decodeTransactionWithExtra(s string) (*common.VersionedTransaction, *mixinE
 	return tx, &p
 }
 
-func encodeMixinExtra(traceId, memo string) string {
+func encodeMixinExtra(groupId, traceId, memo string) string {
 	id, err := uuid.FromString(traceId)
 	if err != nil {
 		panic(err)
 	}
-	p := &mixinExtraPack{T: id, M: memo}
+	p := &mixinExtraPack{T: id, G: groupId, M: memo}
 	b := common.MsgpackMarshalPanic(p)
 	s := base64.RawURLEncoding.EncodeToString(b)
 	if len(s) >= common.ExtraSizeLimit {

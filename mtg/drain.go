@@ -47,7 +47,7 @@ func (grp *Group) processMultisigOutputs(checkpoint time.Time, outputs []*mixin.
 			panic(out.SignedTx)
 		}
 		if out.State == mixin.UTXOStateUnspent {
-			grp.writeOutputOrPanic(out, "", nil)
+			grp.writeOutputOrPanic(out, extra.G, "", nil)
 			continue
 		}
 		tx := &Transaction{
@@ -60,7 +60,7 @@ func (grp *Group) processMultisigOutputs(checkpoint time.Time, outputs []*mixin.
 			out.State = mixin.UTXOStateSpent
 			tx.State = TransactionStateSigned
 		}
-		grp.writeOutputOrPanic(out, tx.TraceId, tx)
+		grp.writeOutputOrPanic(out, extra.G, tx.TraceId, tx)
 	}
 
 	for _, utxo := range outputs {
@@ -79,8 +79,13 @@ func (grp *Group) processMultisigOutputs(checkpoint time.Time, outputs []*mixin.
 	return checkpoint
 }
 
-func (grp *Group) writeOutputOrPanic(utxo *mixin.MultisigUTXO, traceId string, tx *Transaction) {
+func (grp *Group) writeOutputOrPanic(utxo *mixin.MultisigUTXO, groupId, traceId string, tx *Transaction) {
 	out := NewOutputFromMultisig(utxo)
+	if groupId != "" {
+		out.GroupId = groupId
+	} else if grp.grouper != nil {
+		out.GroupId = grp.grouper(out)
+	}
 	err := grp.store.WriteOutput(out, traceId)
 	if err != nil {
 		panic(err)

@@ -23,6 +23,7 @@ type Group struct {
 	mixin   *mixin.Client
 	store   Store
 	workers []Worker
+	grouper func(*Output) string
 
 	id        string
 	members   []string
@@ -88,6 +89,10 @@ func BuildGroup(ctx context.Context, store Store, conf *Configuration) (*Group, 
 	grp.threshold = threshold
 	grp.epoch = epoch
 	return grp, nil
+}
+
+func (grp *Group) SetOutputGrouper(per func(out *Output) string) {
+	grp.grouper = per
 }
 
 func (grp *Group) GenesisId() string {
@@ -159,6 +164,9 @@ func (grp *Group) signTransactions(ctx context.Context) error {
 	var p mixinExtraPack
 	err = common.MsgpackUnmarshal(extra, &p)
 	if p.T.String() != tx.TraceId {
+		panic(hex.EncodeToString(raw))
+	}
+	if p.G != tx.GroupId {
 		panic(hex.EncodeToString(raw))
 	}
 

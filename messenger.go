@@ -56,7 +56,7 @@ func (rw *MessengerWorker) ProcessOutput(ctx context.Context, out *mtg.Output) {
 	memo := "REFUND#" + out.Amount.String()
 	traceId := mixin.UniqueConversationID(out.UTXOID, "refund")
 	amount := out.Amount.Mul(decimal.NewFromFloat(0.7)).String()
-	err := rw.grp.BuildTransaction(ctx, out.AssetID, receivers, 1, amount, memo, traceId)
+	err := rw.grp.BuildTransaction(ctx, out.AssetID, receivers, 1, amount, memo, traceId, "")
 	if err != nil {
 		panic(err)
 	}

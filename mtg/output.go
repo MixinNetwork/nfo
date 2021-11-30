@@ -15,6 +15,7 @@ const (
 )
 
 type Output struct {
+	GroupId         string
 	UserID          string
 	UTXOID          string
 	AssetID         string
