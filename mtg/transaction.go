@@ -184,16 +184,24 @@ func decodeTransactionWithExtra(s string) (*common.VersionedTransaction, *mixinE
 	if err != nil {
 		return nil, nil
 	}
-	extra, err := base64.RawURLEncoding.DecodeString(string(tx.Extra))
-	if err != nil {
+	p := decodeMixinExtra(string(tx.Extra))
+	if p == nil {
 		return nil, nil
+	}
+	return tx, p
+}
+
+func decodeMixinExtra(memo string) *mixinExtraPack {
+	extra, err := base64.RawURLEncoding.DecodeString(memo)
+	if err != nil {
+		return nil
 	}
 	var p mixinExtraPack
 	err = common.MsgpackUnmarshal(extra, &p)
 	if err != nil || p.T.String() == uuid.Nil.String() {
-		return nil, nil
+		return nil
 	}
-	return tx, &p
+	return &p
 }
 
 func encodeMixinExtra(groupId, traceId, memo string) string {

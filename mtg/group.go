@@ -2,7 +2,6 @@ package mtg
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"sort"
@@ -160,9 +159,7 @@ func (grp *Group) signTransactions(ctx context.Context) error {
 	tx.UpdatedAt = time.Now()
 	tx.State = TransactionStateSigning
 
-	extra, _ := base64.RawURLEncoding.DecodeString(string(ver.Extra))
-	var p mixinExtraPack
-	err = common.MsgpackUnmarshal(extra, &p)
+	p := decodeMixinExtra(string(ver.Extra))
 	if p.T.String() != tx.TraceId {
 		panic(hex.EncodeToString(raw))
 	}
