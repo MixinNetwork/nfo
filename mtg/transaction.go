@@ -9,6 +9,7 @@ import (
 
 	"github.com/MixinNetwork/mixin/common"
 	"github.com/MixinNetwork/mixin/crypto"
+	"github.com/MixinNetwork/mixin/logger"
 	"github.com/fox-one/mixin-sdk-go"
 	"github.com/gofrs/uuid"
 	"github.com/shopspring/decimal"
@@ -19,6 +20,8 @@ const (
 	TransactionStateSigning  = 11
 	TransactionStateSigned   = 12
 	TransactionStateSnapshot = 13
+
+	OutputsBatchSize = 36
 )
 
 type Transaction struct {
@@ -37,6 +40,23 @@ type Transaction struct {
 
 // the app should decide a unique trace id so that the MTG will not double spend
 func (grp *Group) BuildTransaction(ctx context.Context, assetId string, receivers []string, threshold int, amount, memo string, traceId, groupId string) error {
+	return grp.buildTransaction(ctx, assetId, receivers, threshold, amount, memo, traceId, groupId, time.Now())
+}
+
+func (grp *Group) buildCompactTransaction(ctx context.Context, source *Transaction, outputs []*Output) error {
+	var total common.Integer
+	for _, out := range outputs {
+		if out.GroupId != source.GroupId {
+			panic(source)
+		}
+		total = total.Add(common.NewIntegerFromString(out.Amount.String()))
+	}
+	traceId := mixin.UniqueConversationID("COMPACTION", source.TraceId)
+	logger.Printf("Group.buildCompactTransaction(%s, %s, %s) => %s\n", source.GroupId, source.TraceId, total, traceId)
+	return grp.buildTransaction(ctx, source.AssetId, grp.GetMembers(), grp.GetThreshold(), total.String(), "COMPACTION", traceId, source.GroupId, time.Time{})
+}
+
+func (grp *Group) buildTransaction(ctx context.Context, assetId string, receivers []string, threshold int, amount, memo string, traceId, groupId string, ts time.Time) error {
 	if threshold <= 0 || threshold > len(receivers) {
 		return fmt.Errorf("invalid receivers threshold %d/%d", threshold, len(receivers))
 	}
@@ -68,7 +88,7 @@ func (grp *Group) BuildTransaction(ctx context.Context, assetId string, receiver
 		Threshold: threshold,
 		Amount:    amount,
 		Memo:      memo,
-		UpdatedAt: time.Now(),
+		UpdatedAt: ts,
 	}
 	return grp.store.WriteTransaction(tx)
 }
@@ -79,7 +99,7 @@ func (grp *Group) signTransaction(ctx context.Context, tx *Transaction) ([]byte,
 		return nil, err
 	}
 	if len(outputs) == 0 {
-		outputs, err = grp.store.ListOutputsForAsset(tx.GroupId, mixin.UTXOStateUnspent, tx.AssetId, 36)
+		outputs, err = grp.store.ListOutputsForAsset(tx.GroupId, mixin.UTXOStateUnspent, tx.AssetId, OutputsBatchSize)
 	}
 	if err != nil {
 		return nil, err
@@ -133,7 +153,13 @@ func (grp *Group) buildRawTransaction(ctx context.Context, tx *Transaction, outp
 		ver.AddInput(crypto.Hash(out.TransactionHash), out.OutputIndex)
 	}
 	if total.Cmp(common.NewIntegerFromString(tx.Amount)) < 0 {
-		return nil, fmt.Errorf("insufficient %s %s", total, tx.Amount)
+		if len(outputs) == OutputsBatchSize {
+			err := grp.buildCompactTransaction(ctx, tx, outputs)
+			if err != nil {
+				panic(err)
+			}
+		}
+		return nil, fmt.Errorf("insufficient %d %s %s", len(outputs), total, tx.Amount)
 	}
 
 	keys, err := grp.mixin.BatchReadGhostKeys(ctx, []*mixin.GhostInput{{
