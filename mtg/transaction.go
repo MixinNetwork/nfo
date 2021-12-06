@@ -53,9 +53,6 @@ func (grp *Group) buildCompactTransaction(ctx context.Context, source *Transacti
 		total = total.Add(common.NewIntegerFromString(out.Amount.String()))
 		traceId = mixin.UniqueConversationID(traceId, out.UTXOID)
 	}
-	if source.TraceId == "d7166fe8-e507-3987-8812-574bdcad2ce0" && total.String() == "1.49000000" { // FIXME remove this hack
-		traceId = mixin.UniqueConversationID("COMPACTION", source.TraceId)
-	}
 	logger.Printf("Group.buildCompactTransaction(%s, %s, %s) => %s\n", source.GroupId, source.TraceId, total, traceId)
 	return grp.buildTransaction(ctx, source.AssetId, grp.GetMembers(), grp.GetThreshold(), total.String(), "COMPACTION", traceId, source.GroupId, time.Unix(0, 0))
 }
