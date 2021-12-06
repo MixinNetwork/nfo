@@ -1,8 +1,6 @@
 package store
 
 import (
-	"encoding/binary"
-
 	"github.com/MixinNetwork/mixin/common"
 	"github.com/MixinNetwork/mixin/crypto"
 	"github.com/MixinNetwork/nfo/mtg"
@@ -132,9 +130,7 @@ func (bs *BadgerStore) resetOldTransaction(txn *badger.Txn, tx *mtg.Transaction)
 }
 
 func buildTransactionTimedKey(tx *mtg.Transaction) []byte {
-	buf := make([]byte, 8)
-	ts := tx.UpdatedAt.UnixNano()
-	binary.BigEndian.PutUint64(buf, uint64(ts))
+	buf := tsToBytes(tx.UpdatedAt)
 	prefix := transactionStatePrefix(tx.State)
 	key := append([]byte(prefix), buf...)
 	return append(key, []byte(tx.TraceId)...)

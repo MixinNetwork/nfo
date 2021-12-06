@@ -1,8 +1,6 @@
 package store
 
 import (
-	"encoding/binary"
-
 	"github.com/MixinNetwork/mixin/common"
 	"github.com/MixinNetwork/mixin/crypto"
 	"github.com/MixinNetwork/nfo/mtg"
@@ -284,9 +282,7 @@ func (bs *BadgerStore) readCollectibleOutput(txn *badger.Txn, id string) (*mtg.C
 }
 
 func buildCollectibleOutputTimedKey(out *mtg.CollectibleOutput, prefix string, traceId string) []byte {
-	buf := make([]byte, 8)
-	ts := out.UpdatedAt.UnixNano()
-	binary.BigEndian.PutUint64(buf, uint64(ts))
+	buf := tsToBytes(out.UpdatedAt)
 	switch prefix {
 	case prefixCollectibleOutputState:
 		prefix = prefix + out.StateName()
@@ -336,9 +332,7 @@ func (bs *BadgerStore) resetOldCollectibleTransaction(txn *badger.Txn, tx *mtg.C
 }
 
 func buildCollectibleTransactionTimedKey(tx *mtg.CollectibleTransaction) []byte {
-	buf := make([]byte, 8)
-	ts := tx.UpdatedAt.UnixNano()
-	binary.BigEndian.PutUint64(buf, uint64(ts))
+	buf := tsToBytes(tx.UpdatedAt)
 	prefix := collectibleTransactionStatePrefix(tx.State)
 	key := append([]byte(prefix), buf...)
 	return append(key, []byte(tx.TraceId)...)
@@ -394,9 +388,7 @@ func (bs *BadgerStore) readCollectibleAction(txn *badger.Txn, id string) (*mtg.A
 }
 
 func buildCollectibleActionTimedKey(act *mtg.Action) []byte {
-	buf := make([]byte, 8)
-	ts := act.CreatedAt.UnixNano()
-	binary.BigEndian.PutUint64(buf, uint64(ts))
+	buf := tsToBytes(act.CreatedAt)
 	prefix := collectibleActionStatePrefix(act.State)
 	key := append([]byte(prefix), buf...)
 	return append(key, []byte(act.UTXOID)...)

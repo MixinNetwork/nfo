@@ -1,8 +1,6 @@
 package store
 
 import (
-	"encoding/binary"
-
 	"github.com/MixinNetwork/mixin/common"
 	"github.com/MixinNetwork/nfo/mtg"
 	"github.com/dgraph-io/badger/v3"
@@ -137,9 +135,7 @@ func (bs *BadgerStore) readOutput(txn *badger.Txn, id string) (*mtg.Output, erro
 }
 
 func buildOutputTimedKey(out *mtg.Output, prefix string, traceId string) []byte {
-	buf := make([]byte, 8)
-	ts := out.UpdatedAt.UnixNano()
-	binary.BigEndian.PutUint64(buf, uint64(ts))
+	buf := tsToBytes(out.UpdatedAt)
 	switch prefix {
 	case prefixOutputGroupAsset:
 		prefix = prefix + out.StateName() + out.AssetID + out.GroupId

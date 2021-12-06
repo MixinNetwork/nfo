@@ -53,7 +53,7 @@ func (grp *Group) buildCompactTransaction(ctx context.Context, source *Transacti
 	}
 	traceId := mixin.UniqueConversationID("COMPACTION", source.TraceId)
 	logger.Printf("Group.buildCompactTransaction(%s, %s, %s) => %s\n", source.GroupId, source.TraceId, total, traceId)
-	return grp.buildTransaction(ctx, source.AssetId, grp.GetMembers(), grp.GetThreshold(), total.String(), "COMPACTION", traceId, source.GroupId, time.Time{})
+	return grp.buildTransaction(ctx, source.AssetId, grp.GetMembers(), grp.GetThreshold(), total.String(), "COMPACTION", traceId, source.GroupId, time.Unix(0, 0))
 }
 
 func (grp *Group) buildTransaction(ctx context.Context, assetId string, receivers []string, threshold int, amount, memo string, traceId, groupId string, ts time.Time) error {

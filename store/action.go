@@ -1,8 +1,6 @@
 package store
 
 import (
-	"encoding/binary"
-
 	"github.com/MixinNetwork/mixin/common"
 	"github.com/MixinNetwork/nfo/mtg"
 	"github.com/dgraph-io/badger/v3"
@@ -92,9 +90,7 @@ func (bs *BadgerStore) readAction(txn *badger.Txn, id string) (*mtg.Action, erro
 }
 
 func buildActionTimedKey(act *mtg.Action) []byte {
-	buf := make([]byte, 8)
-	ts := act.CreatedAt.UnixNano()
-	binary.BigEndian.PutUint64(buf, uint64(ts))
+	buf := tsToBytes(act.CreatedAt)
 	prefix := actionStatePrefix(act.State)
 	key := append([]byte(prefix), buf...)
 	return append(key, []byte(act.UTXOID)...)

@@ -1,8 +1,6 @@
 package store
 
 import (
-	"encoding/binary"
-
 	"github.com/MixinNetwork/mixin/common"
 	"github.com/MixinNetwork/nfo/mtg"
 	"github.com/dgraph-io/badger/v3"
@@ -99,9 +97,7 @@ func (bs *BadgerStore) readIteration(txn *badger.Txn, id string) (*mtg.Iteration
 }
 
 func buildIterationTimedKey(ir *mtg.Iteration) []byte {
-	buf := make([]byte, 8)
-	ts := ir.CreatedAt.UnixNano()
-	binary.BigEndian.PutUint64(buf, uint64(ts))
+	buf := tsToBytes(ir.CreatedAt)
 	key := append([]byte(prefixIterationQueue), buf...)
 	return append(key, ir.NodeId...)
 }
