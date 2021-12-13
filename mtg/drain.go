@@ -38,10 +38,10 @@ func (grp *Group) drainOutputsFromNetwork(ctx context.Context, filter map[string
 func (grp *Group) processMultisigOutputs(filter map[string]bool, checkpoint time.Time, outputs []*mixin.MultisigUTXO) time.Time {
 	for _, out := range outputs {
 		checkpoint = out.UpdatedAt
-		if filter[out.UTXOID] || out.UpdatedAt.Before(grp.epoch) {
+		if filter["OUT"+out.UTXOID] || out.UpdatedAt.Before(grp.epoch) {
 			continue
 		}
-		filter[out.UTXOID] = true
+		filter["OUT"+out.UTXOID] = true
 		logger.Verbosef("Group.processMultisigOutputs(%s) => %s", out.UTXOID, out.SignedTx)
 		ver, extra := decodeTransactionWithExtra(out.SignedTx)
 		if out.SignedTx != "" && ver == nil {
@@ -66,9 +66,10 @@ func (grp *Group) processMultisigOutputs(filter map[string]bool, checkpoint time
 	}
 
 	for _, utxo := range outputs {
-		if filter[utxo.UTXOID] || utxo.UpdatedAt.Before(grp.epoch) {
+		if filter["ACT"+utxo.UTXOID] || utxo.UpdatedAt.Before(grp.epoch) {
 			continue
 		}
+		filter["ACT"+utxo.UTXOID] = true
 		out := NewOutputFromMultisig(utxo)
 		old, err := grp.store.ReadTransactionByHash(out.TransactionHash)
 		if err != nil {
