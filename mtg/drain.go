@@ -14,7 +14,7 @@ const (
 	collectibleOutputsDrainingKey = "collectible-outputs-draining-checkpoint"
 )
 
-func (grp *Group) drainOutputsFromNetwork(ctx context.Context, batch int) {
+func (grp *Group) drainOutputsFromNetwork(ctx context.Context, filter map[string]bool, batch int) {
 	for {
 		checkpoint, err := grp.readDrainingCheckpoint(ctx, outputsDrainingKey)
 		if err != nil {
@@ -27,7 +27,7 @@ func (grp *Group) drainOutputsFromNetwork(ctx context.Context, batch int) {
 			continue
 		}
 
-		checkpoint = grp.processMultisigOutputs(checkpoint, outputs)
+		checkpoint = grp.processMultisigOutputs(filter, checkpoint, outputs)
 		grp.writeDrainingCheckpoint(ctx, outputsDrainingKey, checkpoint)
 		if len(outputs) < batch/2 {
 			break
@@ -35,13 +35,14 @@ func (grp *Group) drainOutputsFromNetwork(ctx context.Context, batch int) {
 	}
 }
 
-func (grp *Group) processMultisigOutputs(checkpoint time.Time, outputs []*mixin.MultisigUTXO) time.Time {
+func (grp *Group) processMultisigOutputs(filter map[string]bool, checkpoint time.Time, outputs []*mixin.MultisigUTXO) time.Time {
 	for _, out := range outputs {
 		checkpoint = out.UpdatedAt
-		logger.Verbosef("Group.processMultisigOutputs(%s) => %s", out.UTXOID, out.SignedTx)
-		if out.UpdatedAt.Before(grp.epoch) {
+		if filter[out.UTXOID] || out.UpdatedAt.Before(grp.epoch) {
 			continue
 		}
+		filter[out.UTXOID] = true
+		logger.Verbosef("Group.processMultisigOutputs(%s) => %s", out.UTXOID, out.SignedTx)
 		ver, extra := decodeTransactionWithExtra(out.SignedTx)
 		if out.SignedTx != "" && ver == nil {
 			panic(out.SignedTx)
@@ -65,7 +66,7 @@ func (grp *Group) processMultisigOutputs(checkpoint time.Time, outputs []*mixin.
 	}
 
 	for _, utxo := range outputs {
-		if utxo.UpdatedAt.Before(grp.epoch) {
+		if filter[utxo.UTXOID] || utxo.UpdatedAt.Before(grp.epoch) {
 			continue
 		}
 		out := NewOutputFromMultisig(utxo)

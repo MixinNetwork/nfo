@@ -117,9 +117,10 @@ func (grp *Group) Run(ctx context.Context) {
 }
 
 func (grp *Group) loopMultsigis(ctx context.Context) {
+	filter := make(map[string]bool)
 	for {
 		// drain all the utxos in the order of updated time
-		grp.drainOutputsFromNetwork(ctx, 500)
+		grp.drainOutputsFromNetwork(ctx, filter, 500)
 
 		// handle the utxos queue by created time
 		grp.handleActionsQueue(ctx)
