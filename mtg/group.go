@@ -119,7 +119,7 @@ func (grp *Group) Run(ctx context.Context) {
 func (grp *Group) loopMultsigis(ctx context.Context) {
 	for {
 		// drain all the utxos in the order of updated time
-		grp.drainOutputsFromNetwork(ctx, 100)
+		grp.drainOutputsFromNetwork(ctx, 500)
 
 		// handle the utxos queue by created time
 		grp.handleActionsQueue(ctx)
@@ -134,7 +134,7 @@ func (grp *Group) loopMultsigis(ctx context.Context) {
 
 func (grp *Group) loopCollectibles(ctx context.Context) {
 	for {
-		grp.drainCollectibleOutputsFromNetwork(ctx, 100)
+		grp.drainCollectibleOutputsFromNetwork(ctx, 500)
 		grp.handleCollectibleActionsQueue(ctx)
 		grp.signCollectibleTransactions(ctx)
 		grp.publishCollectibleTransactions(ctx)
