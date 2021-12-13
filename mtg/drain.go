@@ -3,6 +3,7 @@ package mtg
 import (
 	"context"
 	"encoding/binary"
+	"fmt"
 	"time"
 
 	"github.com/MixinNetwork/mixin/logger"
@@ -38,10 +39,11 @@ func (grp *Group) drainOutputsFromNetwork(ctx context.Context, filter map[string
 func (grp *Group) processMultisigOutputs(filter map[string]bool, checkpoint time.Time, outputs []*mixin.MultisigUTXO) time.Time {
 	for _, out := range outputs {
 		checkpoint = out.UpdatedAt
-		if filter["OUT"+out.UTXOID] || out.UpdatedAt.Before(grp.epoch) {
+		key := fmt.Sprintf("OUT:%s:%d", out.UTXOID, out.UpdatedAt.UnixNano())
+		if filter[key] || out.UpdatedAt.Before(grp.epoch) {
 			continue
 		}
-		filter["OUT"+out.UTXOID] = true
+		filter[key] = true
 		logger.Verbosef("Group.processMultisigOutputs(%s) => %s", out.UTXOID, out.SignedTx)
 		ver, extra := decodeTransactionWithExtra(out.SignedTx)
 		if out.SignedTx != "" && ver == nil {
@@ -66,10 +68,11 @@ func (grp *Group) processMultisigOutputs(filter map[string]bool, checkpoint time
 	}
 
 	for _, utxo := range outputs {
-		if filter["ACT"+utxo.UTXOID] || utxo.UpdatedAt.Before(grp.epoch) {
+		key := fmt.Sprintf("ACT:%s:%d", utxo.UTXOID, utxo.UpdatedAt.UnixNano())
+		if filter[key] || utxo.UpdatedAt.Before(grp.epoch) {
 			continue
 		}
-		filter["ACT"+utxo.UTXOID] = true
+		filter[key] = true
 		out := NewOutputFromMultisig(utxo)
 		old, err := grp.store.ReadTransactionByHash(out.TransactionHash)
 		if err != nil {
