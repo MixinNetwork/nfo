@@ -195,7 +195,7 @@ func (grp *Group) writeCollectibleOutputOrPanic(out *CollectibleOutput, traceId 
 func (grp *Group) readDrainingCheckpoint(ctx context.Context, key string) (time.Time, error) {
 	val, err := grp.store.ReadProperty([]byte(key))
 	if err != nil || len(val) == 0 {
-		return grp.epoch, nil
+		return grp.epoch, err
 	}
 	ts := int64(binary.BigEndian.Uint64(val))
 	return time.Unix(0, ts), nil
