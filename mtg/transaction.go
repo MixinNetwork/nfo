@@ -77,8 +77,10 @@ func (grp *Group) buildTransaction(ctx context.Context, assetId string, receiver
 		}
 	}
 	old, err := grp.store.ReadTransactionByTraceId(traceId)
-	if err != nil || old != nil {
-		return err
+	if err != nil {
+		panic(err)
+	} else if old != nil {
+		return nil
 	}
 	tx := &Transaction{
 		GroupId:   groupId,
@@ -91,7 +93,11 @@ func (grp *Group) buildTransaction(ctx context.Context, assetId string, receiver
 		Memo:      memo,
 		UpdatedAt: ts,
 	}
-	return grp.store.WriteTransaction(tx)
+	err = grp.store.WriteTransaction(tx)
+	if err != nil {
+		panic(err)
+	}
+	return nil
 }
 
 func (grp *Group) signTransaction(ctx context.Context, tx *Transaction) ([]byte, error) {
