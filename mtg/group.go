@@ -202,7 +202,7 @@ func (grp *Group) signCollectibleTransactions(ctx context.Context) error {
 		return err
 	}
 	tx := txs[0]
-	raw, err := grp.signCollectibleMintTransaction(ctx, tx)
+	raw, err := grp.signCollectibleTransaction(ctx, tx)
 	logger.Verbosef("Group.signCollectibleTransaction(%v) => %s %v", *tx, hex.EncodeToString(raw), err)
 	if err != nil {
 		return err

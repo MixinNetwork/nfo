@@ -50,9 +50,14 @@ type CollectibleTransaction struct {
 	Raw       []byte
 	Hash      crypto.Hash
 	UpdatedAt time.Time
+	TokenId   string
 }
 
-func (grp *Group) BuildCollectibleMintTransaction(ctx context.Context, receiver string, nfo []byte) error {
+func (grp *Group) BuildCollectibleTransaction(ctx context.Context, receivers []string, threshold int, nfo []byte, tokenId string) error {
+	if threshold <= 0 || threshold > len(receivers) {
+		return fmt.Errorf("invalid receivers threshold %d/%d", threshold, len(receivers))
+	}
+
 	traceId := nfoTraceId(nfo)
 	old, err := grp.store.ReadCollectibleTransaction(traceId)
 	if err != nil || old != nil {
@@ -61,11 +66,12 @@ func (grp *Group) BuildCollectibleMintTransaction(ctx context.Context, receiver 
 	tx := &CollectibleTransaction{
 		TraceId:   traceId,
 		State:     TransactionStateInitial,
-		Receivers: []string{receiver},
-		Threshold: 1,
+		Receivers: receivers,
+		Threshold: threshold,
 		Amount:    "1",
 		NFO:       nfo,
 		UpdatedAt: time.Now(),
+		TokenId:   tokenId,
 	}
 	return grp.store.WriteCollectibleTransaction(tx.TraceId, tx)
 }
@@ -115,13 +121,17 @@ func (out *CollectibleOutput) StateName() string {
 	panic(out.State)
 }
 
-func (grp *Group) signCollectibleMintTransaction(ctx context.Context, tx *CollectibleTransaction) ([]byte, error) {
+func (grp *Group) signCollectibleTransaction(ctx context.Context, tx *CollectibleTransaction) ([]byte, error) {
 	outputs, err := grp.store.ListCollectibleOutputsForTransaction(tx.TraceId)
 	if err != nil {
 		return nil, err
 	}
 	if len(outputs) == 0 {
-		outputs, err = grp.store.ListCollectibleOutputsForToken(mixin.UTXOStateUnspent, CollectibleMetaTokenId, 1)
+		if tx.TokenId == "" {
+			outputs, err = grp.store.ListCollectibleOutputsForToken(mixin.UTXOStateUnspent, CollectibleMetaTokenId, 1)
+		} else {
+			outputs, err = grp.store.ListCollectibleOutputsForToken(mixin.UTXOStateUnspent, tx.TokenId, 1)
+		}
 	}
 	if err != nil {
 		return nil, err
@@ -130,7 +140,7 @@ func (grp *Group) signCollectibleMintTransaction(ctx context.Context, tx *Collec
 		return nil, fmt.Errorf("empty outputs %s", tx.Amount)
 	}
 
-	ver, err := grp.buildRawCollectibleMintTransaction(ctx, tx, outputs)
+	ver, err := grp.buildRawCollectibleTransaction(ctx, tx, outputs)
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +171,7 @@ func (grp *Group) signCollectibleMintTransaction(ctx context.Context, tx *Collec
 	return hex.DecodeString(req.RawTransaction)
 }
 
-func (grp *Group) buildRawCollectibleMintTransaction(ctx context.Context, tx *CollectibleTransaction, outputs []*CollectibleOutput) (*common.VersionedTransaction, error) {
+func (grp *Group) buildRawCollectibleTransaction(ctx context.Context, tx *CollectibleTransaction, outputs []*CollectibleOutput) (*common.VersionedTransaction, error) {
 	old := decodeCollectibleTransaction(outputs[0].SignedTx)
 	if old != nil {
 		return old, nil
