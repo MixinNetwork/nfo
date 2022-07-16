@@ -53,12 +53,14 @@ type CollectibleTransaction struct {
 	TokenId   string
 }
 
-func (grp *Group) BuildCollectibleTransaction(ctx context.Context, receivers []string, threshold int, nfo []byte, tokenId string) error {
+func (grp *Group) BuildCollectibleTransaction(ctx context.Context, receivers []string, threshold int, nfo []byte, tokenId, traceId string) error {
 	if threshold <= 0 || threshold > len(receivers) {
 		return fmt.Errorf("invalid receivers threshold %d/%d", threshold, len(receivers))
 	}
 
-	traceId := nfoTraceId(nfo)
+	if tokenId == "" {
+		traceId = nfoTraceId(nfo)
+	}
 	old, err := grp.store.ReadCollectibleTransaction(traceId)
 	if err != nil || old != nil {
 		return err
