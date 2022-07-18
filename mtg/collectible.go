@@ -3,7 +3,6 @@ package mtg
 import (
 	"context"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"time"
 
@@ -19,25 +18,23 @@ const (
 )
 
 type CollectibleOutput struct {
-	Type               string      `json:"type"`
-	UserId             string      `json:"user_id"`
-	OutputId           string      `json:"output_id"`
-	TokenId            string      `json:"token_id"`
-	TransactionHash    crypto.Hash `json:"transaction_hash"`
-	OutputIndex        int         `json:"output_index"`
-	Amount             string      `json:"amount"`
-	SendersThreshold   int64       `json:"senders_threshold"`
-	Senders            []string    `json:"senders"`
-	ReceiversThreshold int64       `json:"receivers_threshold"`
-	Receivers          []string    `json:"receivers"`
-	Memo               string      `json:"memo"`
-	CreatedAt          time.Time   `json:"created_at"`
-	UpdatedAt          time.Time   `json:"updated_at"`
-	SignedBy           string      `json:"signed_by"`
-	SignedTx           string      `json:"signed_tx"`
-
-	JsonState string `json:"state" msgpack:"-"`
-	State     int    `json:"-"`
+	Type               string
+	UserId             string
+	OutputId           string
+	TokenId            string
+	TransactionHash    crypto.Hash
+	OutputIndex        int
+	Amount             string
+	SendersThreshold   int64
+	Senders            []string
+	ReceiversThreshold int64
+	Receivers          []string
+	Memo               string
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+	SignedBy           string
+	SignedTx           string
+	State              int
 }
 
 type CollectibleTransaction struct {
@@ -78,39 +75,6 @@ func (grp *Group) BuildCollectibleTransaction(ctx context.Context, receivers []s
 	return grp.store.WriteCollectibleTransaction(tx.TraceId, tx)
 }
 
-func (grp *Group) ReadCollectibleOutputs(ctx context.Context, members []string, threshold uint8, offset time.Time, limit int) ([]*CollectibleOutput, error) {
-	params := make(map[string]string)
-	if !offset.IsZero() {
-		params["offset"] = offset.UTC().Format(time.RFC3339Nano)
-	}
-	if limit > 0 {
-		params["limit"] = fmt.Sprint(limit)
-	}
-	if threshold < 1 || int(threshold) >= len(members) {
-		return nil, errors.New("invalid members")
-	}
-	params["members"] = mixin.HashMembers(members)
-	params["threshold"] = fmt.Sprint(threshold)
-
-	var outputs []*CollectibleOutput
-	err := grp.mixin.Get(ctx, "/collectibles/outputs", params, &outputs)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, o := range outputs {
-		switch o.JsonState {
-		case mixin.UTXOStateUnspent:
-			o.State = OutputStateUnspent
-		case mixin.UTXOStateSigned:
-			o.State = OutputStateSigned
-		case mixin.UTXOStateSpent:
-			o.State = OutputStateSpent
-		}
-	}
-	return outputs, nil
-}
-
 func (out *CollectibleOutput) StateName() string {
 	switch out.State {
 	case OutputStateUnspent:
@@ -121,6 +85,27 @@ func (out *CollectibleOutput) StateName() string {
 		return mixin.UTXOStateSpent
 	}
 	panic(out.State)
+}
+
+func (o *CollectibleOutput) Unified() *UnifiedOutput {
+	return &UnifiedOutput{
+		Type:                      OutputTypeCollectible,
+		UserId:                    o.UserId,
+		TransactionHash:           o.TransactionHash,
+		OutputIndex:               o.OutputIndex,
+		Memo:                      o.Memo,
+		CreatedAt:                 o.CreatedAt,
+		UpdatedAt:                 o.UpdatedAt,
+		SignedBy:                  o.SignedBy,
+		SignedTx:                  o.SignedTx,
+		State:                     o.StateName(),
+		UnifiedOutputId:           o.OutputId,
+		UnifiedTokenId:            o.TokenId,
+		UnifiedSenders:            o.Senders,
+		UnifiedSendersThreshold:   o.SendersThreshold,
+		UnifiedReceivers:          o.Receivers,
+		UnifiedReceiversThreshold: o.ReceiversThreshold,
+	}
 }
 
 func (grp *Group) signCollectibleTransaction(ctx context.Context, tx *CollectibleTransaction) ([]byte, error) {

@@ -112,11 +112,6 @@ func (grp *Group) AddWorker(wkr Worker) {
 
 func (grp *Group) Run(ctx context.Context) {
 	logger.Printf("Group(%s, %d, %s).Run(v0.1.1)\n", mixin.HashMembers(grp.members), grp.threshold, grp.GenesisId())
-	go grp.loopCollectibles(ctx)
-	grp.loopMultsigis(ctx)
-}
-
-func (grp *Group) loopMultsigis(ctx context.Context) {
 	filter := make(map[string]bool)
 	for {
 		// drain all the utxos in the order of updated time
@@ -130,13 +125,7 @@ func (grp *Group) loopMultsigis(ctx context.Context) {
 
 		// publish all signed transactions to the mainnet
 		grp.publishTransactions(ctx)
-	}
-}
 
-func (grp *Group) loopCollectibles(ctx context.Context) {
-	for {
-		grp.drainCollectibleOutputsFromNetwork(ctx, 500)
-		grp.handleCollectibleActionsQueue(ctx)
 		grp.signCollectibleTransactions(ctx)
 		grp.publishCollectibleTransactions(ctx)
 	}
@@ -190,10 +179,6 @@ func (grp *Group) publishTransactions(ctx context.Context) error {
 		}
 	}
 	return nil
-}
-
-func (grp *Group) compactOutputs(ctx context.Context) {
-	panic("TODO")
 }
 
 func (grp *Group) signCollectibleTransactions(ctx context.Context) error {

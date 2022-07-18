@@ -8,9 +8,6 @@ import (
 )
 
 const (
-	prefixCollectibleActionPayload = "COLLECTIBLES:ACTION:PAYLOAD:"
-	prefixCollectibleActionState   = "COLLECTIBLES:ACTION:STATE:"
-
 	prefixCollectibleOutputPayload     = "COLLECTIBLES:OUTPUT:PAYLOAD:"
 	prefixCollectibleOutputState       = "COLLECTIBLES:OUTPUT:STATE:"
 	prefixCollectibleOutputTransaction = "COLLECTIBLES:OUTPUT:TRASACTION:"
@@ -20,50 +17,6 @@ const (
 	prefixCollectibleTransactionState   = "COLLECTIBLES:TRANSACTION:STATE:"
 	prefixCollectibleTransactionHash    = "COLLECTIBLES:TRANSACTION:HASH:"
 )
-
-func (bs *BadgerStore) WriteCollectibleAction(act *mtg.Action) error {
-	return bs.db.Update(func(txn *badger.Txn) error {
-		old, err := bs.resetOldCollectibleAction(txn, act)
-		if err != nil || old != nil {
-			return err
-		}
-		key := []byte(prefixCollectibleActionPayload + act.UTXOID)
-		val := common.MsgpackMarshalPanic(act)
-		err = txn.Set(key, val)
-		if err != nil {
-			return err
-		}
-
-		key = buildCollectibleActionTimedKey(act)
-		return txn.Set(key, []byte{1})
-	})
-}
-
-func (bs *BadgerStore) ListCollectibleActions(limit int) ([]*mtg.CollectibleOutput, error) {
-	txn := bs.db.NewTransaction(false)
-	defer txn.Discard()
-
-	opts := badger.DefaultIteratorOptions
-	opts.PrefetchValues = false
-	opts.Prefix = []byte(collectibleActionStatePrefix(mtg.ActionStateInitial))
-	it := txn.NewIterator(opts)
-	defer it.Close()
-
-	var outs []*mtg.CollectibleOutput
-	for it.Seek(opts.Prefix); it.Valid(); it.Next() {
-		key := it.Item().Key()
-		id := string(key[len(opts.Prefix)+8:])
-		out, err := bs.readCollectibleOutput(txn, id)
-		if err != nil {
-			return nil, err
-		}
-		outs = append(outs, out)
-		if len(outs) == limit {
-			break
-		}
-	}
-	return outs, nil
-}
 
 func (bs *BadgerStore) WriteCollectibleOutput(out *mtg.CollectibleOutput, traceId string) error {
 	return bs.db.Update(func(txn *badger.Txn) error {
@@ -349,58 +302,6 @@ func collectibleTransactionStatePrefix(state int) string {
 		return prefix + "signeddd"
 	case mtg.TransactionStateSnapshot:
 		return prefix + "snapshot"
-	}
-	panic(state)
-}
-
-func (bs *BadgerStore) resetOldCollectibleAction(txn *badger.Txn, act *mtg.Action) (*mtg.Action, error) {
-	old, err := bs.readCollectibleAction(txn, act.UTXOID)
-	if err != nil || old == nil {
-		return old, err
-	}
-	if old.State >= act.State {
-		return old, nil
-	}
-
-	key := buildCollectibleActionTimedKey(old)
-	_, err = txn.Get(key)
-	if err != nil {
-		panic(key)
-	}
-	return nil, txn.Delete(key)
-}
-
-func (bs *BadgerStore) readCollectibleAction(txn *badger.Txn, id string) (*mtg.Action, error) {
-	key := []byte(prefixCollectibleActionPayload + id)
-	item, err := txn.Get(key)
-	if err == badger.ErrKeyNotFound {
-		return nil, nil
-	} else if err != nil {
-		return nil, err
-	}
-	val, err := item.ValueCopy(nil)
-	if err != nil {
-		return nil, err
-	}
-	var tx mtg.Action
-	err = common.MsgpackUnmarshal(val, &tx)
-	return &tx, err
-}
-
-func buildCollectibleActionTimedKey(act *mtg.Action) []byte {
-	buf := tsToBytes(act.CreatedAt)
-	prefix := collectibleActionStatePrefix(act.State)
-	key := append([]byte(prefix), buf...)
-	return append(key, []byte(act.UTXOID)...)
-}
-
-func collectibleActionStatePrefix(state int) string {
-	prefix := prefixCollectibleActionState
-	switch state {
-	case mtg.ActionStateInitial:
-		return prefix + "initial"
-	case mtg.ActionStateDone:
-		return prefix + "doneeee"
 	}
 	panic(state)
 }

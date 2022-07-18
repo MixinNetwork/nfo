@@ -29,7 +29,7 @@ func (bs *BadgerStore) WriteAction(act *mtg.Action) error {
 	})
 }
 
-func (bs *BadgerStore) ListActions(limit int) ([]*mtg.Output, error) {
+func (bs *BadgerStore) ListActions(limit int) ([]*mtg.UnifiedOutput, error) {
 	txn := bs.db.NewTransaction(false)
 	defer txn.Discard()
 
@@ -39,15 +39,25 @@ func (bs *BadgerStore) ListActions(limit int) ([]*mtg.Output, error) {
 	it := txn.NewIterator(opts)
 	defer it.Close()
 
-	var outs []*mtg.Output
+	var outs []*mtg.UnifiedOutput
 	for it.Seek(opts.Prefix); it.Valid(); it.Next() {
 		key := it.Item().Key()
 		id := string(key[len(opts.Prefix)+8:])
-		out, err := bs.readOutput(txn, id)
+
+		mo, err := bs.readOutput(txn, id)
 		if err != nil {
 			return nil, err
+		} else if mo != nil {
+			outs = append(outs, mo.Unified())
 		}
-		outs = append(outs, out)
+
+		co, err := bs.readCollectibleOutput(txn, id)
+		if err != nil {
+			return nil, err
+		} else if co != nil {
+			outs = append(outs, co.Unified())
+		}
+
 		if len(outs) == limit {
 			break
 		}

@@ -25,41 +25,23 @@ func (grp *Group) handleActionsQueue(ctx context.Context) error {
 	}
 	for _, out := range outputs {
 		for _, wkr := range grp.workers {
-			wkr.ProcessOutput(ctx, out)
+			switch out.Type {
+			case OutputTypeMultisig:
+				wkr.ProcessOutput(ctx, out.AsMultisig())
+			case OutputTypeCollectible:
+				wkr.ProcessCollectibleOutput(ctx, out.AsCollectible())
+			default:
+				panic(out.Type)
+			}
 		}
 		grp.writeAction(out, ActionStateDone)
 	}
 	return nil
 }
 
-func (grp *Group) handleCollectibleActionsQueue(ctx context.Context) error {
-	outputs, err := grp.store.ListCollectibleActions(16)
-	if err != nil {
-		return err
-	}
-	for _, out := range outputs {
-		for _, wkr := range grp.workers {
-			wkr.ProcessCollectibleOutput(ctx, out)
-		}
-		grp.writeCollectibleAction(out, ActionStateDone)
-	}
-	return nil
-}
-
-func (grp *Group) writeAction(out *Output, state int) {
+func (grp *Group) writeAction(out *UnifiedOutput, state int) {
 	err := grp.store.WriteAction(&Action{
-		UTXOID:    out.UTXOID,
-		CreatedAt: out.CreatedAt,
-		State:     state,
-	})
-	if err != nil {
-		panic(err)
-	}
-}
-
-func (grp *Group) writeCollectibleAction(out *CollectibleOutput, state int) {
-	err := grp.store.WriteCollectibleAction(&Action{
-		UTXOID:    out.OutputId,
+		UTXOID:    out.UniqueId(),
 		CreatedAt: out.CreatedAt,
 		State:     state,
 	})

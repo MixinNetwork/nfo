@@ -20,7 +20,7 @@ type Store interface {
 	ListOutputsForAsset(groupId string, state, assetId string, limit int) ([]*Output, error)
 
 	WriteAction(act *Action) error
-	ListActions(limit int) ([]*Output, error)
+	ListActions(limit int) ([]*UnifiedOutput, error)
 
 	WriteTransaction(tx *Transaction) error
 	ReadTransactionByTraceId(traceId string) (*Transaction, error)
@@ -31,9 +31,6 @@ type Store interface {
 	WriteCollectibleOutputs(utxos []*CollectibleOutput, traceId string) error
 	ListCollectibleOutputsForTransaction(traceId string) ([]*CollectibleOutput, error)
 	ListCollectibleOutputsForToken(state, tokenId string, limit int) ([]*CollectibleOutput, error)
-
-	WriteCollectibleAction(act *Action) error
-	ListCollectibleActions(limit int) ([]*CollectibleOutput, error)
 
 	WriteCollectibleTransaction(traceId string, tx *CollectibleTransaction) error
 	ReadCollectibleTransaction(traceId string) (*CollectibleTransaction, error)
