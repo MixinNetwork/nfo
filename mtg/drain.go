@@ -44,7 +44,6 @@ func (grp *Group) processUnifiedOutputs(filter map[string]bool, checkpoint time.
 			continue
 		}
 		filter[key] = true
-		logger.Verbosef("Group.processUnifiedOutputs(%s, %s) => %s", out.Type, out.UniqueId(), out.SignedTx)
 		if out.Type == OutputTypeMultisig {
 			grp.processMultisigOutput(out.AsMultisig())
 		} else if out.Type == OutputTypeCollectible {
@@ -58,10 +57,10 @@ func (grp *Group) processUnifiedOutputs(filter map[string]bool, checkpoint time.
 			continue
 		}
 		filter[key] = true
-		old, err := grp.readOldTransaction(utxo)
+		exist, err := grp.readOldTransaction(utxo)
 		if err != nil {
 			panic(utxo.TransactionHash)
-		} else if old != nil {
+		} else if exist {
 			continue
 		}
 		grp.writeAction(utxo, ActionStateInitial)
@@ -69,16 +68,19 @@ func (grp *Group) processUnifiedOutputs(filter map[string]bool, checkpoint time.
 	return checkpoint
 }
 
-func (grp *Group) readOldTransaction(utxo *UnifiedOutput) (interface{}, error) {
+func (grp *Group) readOldTransaction(utxo *UnifiedOutput) (bool, error) {
 	if utxo.Type == OutputTypeMultisig {
-		return grp.store.ReadTransactionByHash(utxo.TransactionHash)
+		tx, err := grp.store.ReadTransactionByHash(utxo.TransactionHash)
+		return tx != nil, err
 	} else if utxo.Type == OutputTypeCollectible {
-		return grp.store.ReadCollectibleTransactionByHash(utxo.TransactionHash)
+		tx, err := grp.store.ReadCollectibleTransactionByHash(utxo.TransactionHash)
+		return tx != nil, err
 	}
 	panic(utxo.Type)
 }
 
 func (grp *Group) processMultisigOutput(out *Output) {
+	logger.Verbosef("Group.processMultisigOutput(%v)", out)
 	ver, extra := decodeTransactionWithExtra(out.SignedTx)
 	if out.SignedTx != "" && ver == nil {
 		panic(out.SignedTx)
@@ -108,6 +110,7 @@ func (grp *Group) writeOutputOrPanic(out *Output, traceId string, tx *Transactio
 	} else if grp.grouper != nil {
 		out.GroupId = grp.grouper(out)
 	}
+	logger.Verbosef("Group.writeOutputOrPanic(%v, %s, %v)", out, traceId, tx)
 	err := grp.store.WriteOutput(out, traceId)
 	if err != nil {
 		panic(err)
@@ -129,6 +132,7 @@ func (grp *Group) writeOutputOrPanic(out *Output, traceId string, tx *Transactio
 }
 
 func (grp *Group) processCollectibleOutput(out *CollectibleOutput) {
+	logger.Verbosef("Group.processCollectibleOutput(%v)", out)
 	ver := decodeCollectibleTransaction(out.SignedTx)
 	if out.SignedTx != "" && ver == nil {
 		panic(out.SignedTx)
@@ -152,6 +156,7 @@ func (grp *Group) processCollectibleOutput(out *CollectibleOutput) {
 }
 
 func (grp *Group) writeCollectibleOutputOrPanic(out *CollectibleOutput, traceId string, tx *CollectibleTransaction) {
+	logger.Verbosef("Group.writeCollectibleOutputOrPanic(%v, %s, %v)", out, traceId, tx)
 	err := grp.store.WriteCollectibleOutput(out, traceId)
 	if err != nil {
 		panic(err)

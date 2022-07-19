@@ -3,6 +3,8 @@ package mtg
 import (
 	"context"
 	"time"
+
+	"github.com/MixinNetwork/mixin/logger"
 )
 
 const (
@@ -40,6 +42,7 @@ func (grp *Group) handleActionsQueue(ctx context.Context) error {
 }
 
 func (grp *Group) writeAction(out *UnifiedOutput, state int) {
+	logger.Verbosef("Group.writeAction(%v, %d)", out, state)
 	err := grp.store.WriteAction(&Action{
 		UTXOID:    out.UniqueId(),
 		CreatedAt: out.CreatedAt,
