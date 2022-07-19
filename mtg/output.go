@@ -18,17 +18,17 @@ const (
 )
 
 type UnifiedOutput struct {
-	Type            string      `json:"type"`
-	UserId          string      `json:"user_id"`
-	TransactionHash crypto.Hash `json:"transaction_hash"`
-	OutputIndex     int         `json:"output_index"`
-	Amount          string      `json:"amount"`
-	Memo            string      `json:"memo"`
-	CreatedAt       time.Time   `json:"created_at"`
-	UpdatedAt       time.Time   `json:"updated_at"`
-	SignedBy        string      `json:"signed_by"`
-	SignedTx        string      `json:"signed_tx"`
-	State           string      `json:"state"`
+	Type            string          `json:"type"`
+	UserId          string          `json:"user_id"`
+	TransactionHash crypto.Hash     `json:"transaction_hash"`
+	OutputIndex     int             `json:"output_index"`
+	Amount          decimal.Decimal `json:"amount"`
+	Memo            string          `json:"memo"`
+	CreatedAt       time.Time       `json:"created_at"`
+	UpdatedAt       time.Time       `json:"updated_at"`
+	SignedBy        string          `json:"signed_by"`
+	SignedTx        string          `json:"signed_tx"`
+	State           string          `json:"state"`
 
 	UnifiedOutputId           string   `json:"output_id"`
 	UnifiedTokenId            string   `json:"token_id"`
@@ -63,34 +63,6 @@ type Output struct {
 	SignedTx        string
 }
 
-func NewOutputFromMultisig(utxo *mixin.MultisigUTXO) *Output {
-	out := &Output{
-		UserID:      utxo.UserID,
-		UTXOID:      utxo.UTXOID,
-		AssetID:     utxo.AssetID,
-		OutputIndex: utxo.OutputIndex,
-		Sender:      utxo.Sender,
-		Amount:      utxo.Amount,
-		Threshold:   utxo.Threshold,
-		Members:     utxo.Members,
-		Memo:        utxo.Memo,
-		CreatedAt:   utxo.CreatedAt,
-		UpdatedAt:   utxo.UpdatedAt,
-		SignedBy:    utxo.SignedBy,
-		SignedTx:    utxo.SignedTx,
-	}
-	out.TransactionHash = crypto.Hash(utxo.TransactionHash)
-	switch utxo.State {
-	case mixin.UTXOStateUnspent:
-		out.State = OutputStateUnspent
-	case mixin.UTXOStateSigned:
-		out.State = OutputStateSigned
-	case mixin.UTXOStateSpent:
-		out.State = OutputStateSpent
-	}
-	return out
-}
-
 func (out *Output) StateName() string {
 	switch out.State {
 	case OutputStateUnspent:
@@ -109,6 +81,7 @@ func (o *Output) Unified() *UnifiedOutput {
 		UserId:           o.UserID,
 		TransactionHash:  o.TransactionHash,
 		OutputIndex:      o.OutputIndex,
+		Amount:           o.Amount,
 		Memo:             o.Memo,
 		CreatedAt:        o.CreatedAt,
 		UpdatedAt:        o.UpdatedAt,
@@ -144,6 +117,7 @@ func (o *UnifiedOutput) AsMultisig() *Output {
 		TransactionHash: o.TransactionHash,
 		OutputIndex:     o.OutputIndex,
 		Sender:          o.UnifiedSender,
+		Amount:          o.Amount,
 		Threshold:       uint8(o.UnifiedThreshold),
 		Members:         o.UnifiedMembers,
 		Memo:            o.Memo,
@@ -152,7 +126,6 @@ func (o *UnifiedOutput) AsMultisig() *Output {
 		SignedBy:        o.SignedBy,
 		SignedTx:        o.SignedTx,
 	}
-	out.Amount, _ = decimal.NewFromString(o.Amount)
 	switch o.State {
 	case mixin.UTXOStateUnspent:
 		out.State = OutputStateUnspent

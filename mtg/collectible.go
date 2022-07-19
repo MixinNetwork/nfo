@@ -24,7 +24,7 @@ type CollectibleOutput struct {
 	TokenId            string
 	TransactionHash    crypto.Hash
 	OutputIndex        int
-	Amount             string
+	Amount             decimal.Decimal
 	SendersThreshold   int64
 	Senders            []string
 	ReceiversThreshold int64
@@ -93,6 +93,7 @@ func (o *CollectibleOutput) Unified() *UnifiedOutput {
 		UserId:                    o.UserId,
 		TransactionHash:           o.TransactionHash,
 		OutputIndex:               o.OutputIndex,
+		Amount:                    o.Amount,
 		Memo:                      o.Memo,
 		CreatedAt:                 o.CreatedAt,
 		UpdatedAt:                 o.UpdatedAt,
@@ -176,7 +177,7 @@ func (grp *Group) buildRawCollectibleTransaction(ctx context.Context, tx *Collec
 
 	var total common.Integer
 	for _, out := range outputs {
-		total = total.Add(common.NewIntegerFromString(out.Amount))
+		total = total.Add(common.NewIntegerFromString(out.Amount.String()))
 		ver.AddInput(out.TransactionHash, out.OutputIndex)
 	}
 	if total.Cmp(common.NewIntegerFromString(tx.Amount)) < 0 {
