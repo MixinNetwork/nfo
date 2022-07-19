@@ -48,7 +48,7 @@ func (mw *MintWorker) ProcessOutput(ctx context.Context, out *mtg.Output) {
 	if err != nil {
 		return
 	}
-	nfm, err := DecodeNFOMemo(extra)
+	nfm, err := mtg.DecodeNFOMemo(extra)
 	if err != nil {
 		return
 	}
@@ -67,7 +67,7 @@ func (mw *MintWorker) ProcessOutput(ctx context.Context, out *mtg.Output) {
 	if err != nil {
 		panic(err)
 	}
-	if og != nil && og.Creator != out.Sender && bytes.Compare(ck, NMDefaultCollectionKey) != 0 {
+	if og != nil && og.Creator != out.Sender && bytes.Compare(ck, mtg.NMDefaultCollectionKey) != 0 {
 		return
 	}
 	err = mw.store.WriteMintToken(ck, nfm.Token, out.Sender)

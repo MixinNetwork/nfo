@@ -1,4 +1,4 @@
-package nft
+package mtg
 
 import (
 	"bytes"
@@ -73,6 +73,15 @@ func BuildMintNFO(collection string, token []byte, hash crypto.Hash) []byte {
 		Extra:      hash[:],
 	}
 	nfo.Mark([]int{0})
+	return nfo.Encode()
+}
+
+func BuildExtraNFO(extra []byte) []byte {
+	nfo := NFOMemo{
+		Prefix:  NMPrefix,
+		Version: NMVersion,
+		Extra:   extra,
+	}
 	return nfo.Encode()
 }
 

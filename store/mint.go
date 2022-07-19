@@ -4,6 +4,7 @@ import (
 	"bytes"
 
 	"github.com/MixinNetwork/mixin/common"
+	"github.com/MixinNetwork/nfo/mtg"
 	"github.com/MixinNetwork/nfo/nft"
 	"github.com/dgraph-io/badger/v3"
 )
@@ -33,7 +34,7 @@ func (bs *BadgerStore) WriteMintToken(collection []byte, id []byte, user string)
 				Circulation: 0,
 			}
 		}
-		if og.Creator != user && bytes.Compare(collection, nft.NMDefaultCollectionKey) != 0 {
+		if og.Creator != user && bytes.Compare(collection, mtg.NMDefaultCollectionKey) != 0 {
 			panic(og.Creator)
 		}
 		og.Circulation += 1

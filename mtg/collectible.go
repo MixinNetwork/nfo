@@ -9,6 +9,7 @@ import (
 	"github.com/MixinNetwork/mixin/common"
 	"github.com/MixinNetwork/mixin/crypto"
 	"github.com/fox-one/mixin-sdk-go"
+	"github.com/gofrs/uuid"
 	"github.com/shopspring/decimal"
 )
 
@@ -55,9 +56,24 @@ func (grp *Group) BuildCollectibleTransaction(ctx context.Context, receivers []s
 		return fmt.Errorf("invalid receivers threshold %d/%d", threshold, len(receivers))
 	}
 
+	nfm, err := DecodeNFOMemo(nfo)
+	if err != nil {
+		return fmt.Errorf("invalid nfo data %x %v", nfo, err)
+	}
+	if nfm.WillMint() && tokenId != "" {
+		return fmt.Errorf("invalid nfo and token combination %x %s", nfo, tokenId)
+	}
+	if !nfm.WillMint() && tokenId == "" {
+		return fmt.Errorf("invalid nfo and token combination %x %s", nfo, tokenId)
+	}
+
 	if tokenId == "" {
 		traceId = nfoTraceId(nfo)
 	}
+	if uuid.FromStringOrNil(traceId).String() != traceId {
+		return fmt.Errorf("invalid collectible trace id %s", traceId)
+	}
+
 	old, err := grp.store.ReadCollectibleTransaction(traceId)
 	if err != nil || old != nil {
 		return err
