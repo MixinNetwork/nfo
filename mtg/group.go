@@ -198,7 +198,10 @@ func (grp *Group) signCollectibleTransactions(ctx context.Context) error {
 	tx.UpdatedAt = time.Now()
 	tx.State = TransactionStateSigning
 
-	if nfoTraceId(ver.Extra) != tx.TraceId {
+	nfm, err := DecodeNFOMemo(ver.Extra)
+	if err != nil {
+		panic(hex.EncodeToString(raw))
+	} else if nfm.WillMint() && nfoTraceId(ver.Extra) != tx.TraceId {
 		panic(hex.EncodeToString(raw))
 	}
 
