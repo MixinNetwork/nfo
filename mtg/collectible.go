@@ -153,12 +153,12 @@ func (grp *Group) signCollectibleTransaction(ctx context.Context, tx *Collectibl
 	}
 
 	raw := hex.EncodeToString(ver.Marshal())
-	req, err := grp.CreateCollectibleRequest(ctx, mixin.MultisigActionSign, raw)
+	req, err := grp.mixin.CreateCollectibleRequest(ctx, mixin.MultisigActionSign, raw)
 	if err != nil {
 		return nil, err
 	}
 
-	req, err = grp.SignCollectible(ctx, req.RequestID, grp.pin)
+	req, err = grp.mixin.SignCollectibleRequest(ctx, req.RequestID, grp.pin)
 	if err != nil {
 		return nil, err
 	}
@@ -252,26 +252,4 @@ func nfoTraceId(nfo []byte) string {
 type cr struct {
 	RequestID      string `json:"request_id"`
 	RawTransaction string `json:"raw_transaction"`
-}
-
-func (grp *Group) CreateCollectibleRequest(ctx context.Context, action, raw string) (*cr, error) {
-	params := map[string]string{
-		"action": action,
-		"raw":    raw,
-	}
-
-	var req cr
-	err := grp.mixin.Post(ctx, "/collectibles/requests", params, &req)
-	return &req, err
-}
-
-func (grp *Group) SignCollectible(ctx context.Context, reqID, pin string) (*cr, error) {
-	uri := "/collectibles/requests/" + reqID + "/sign"
-	params := map[string]string{
-		"pin": grp.mixin.EncryptPin(pin),
-	}
-
-	var req cr
-	err := grp.mixin.Post(ctx, uri, params, &req)
-	return &req, err
 }

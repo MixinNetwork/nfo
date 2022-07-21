@@ -3,7 +3,6 @@ package mtg
 import (
 	"context"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"time"
 
@@ -201,8 +200,8 @@ func (grp *Group) ReadUnifiedOutputs(ctx context.Context, members []string, thre
 	if limit > 0 {
 		params["limit"] = fmt.Sprint(limit)
 	}
-	if threshold < 1 || int(threshold) >= len(members) {
-		return nil, errors.New("invalid members")
+	if threshold < 1 || int(threshold) > len(members) {
+		return nil, fmt.Errorf("invalid members %v %d", members, threshold)
 	}
 	params["members"] = mixin.HashMembers(members)
 	params["threshold"] = fmt.Sprint(threshold)
