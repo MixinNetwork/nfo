@@ -74,7 +74,7 @@ func (mw *MintWorker) ProcessOutput(ctx context.Context, out *mtg.Output) {
 	if err != nil {
 		panic(err)
 	}
-	err = mw.grp.BuildCollectibleTransaction(ctx, []string{out.Sender}, 1, extra, "", "")
+	err = mw.grp.BuildCollectibleMintTransaction(ctx, []string{out.Sender}, 1, extra)
 	logger.Verbosef("MintWorker.BuildCollectibleMintTransaction(%s, %s)\n", out.Sender, hex.EncodeToString(extra))
 	if err != nil {
 		panic(err)

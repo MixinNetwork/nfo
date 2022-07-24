@@ -132,7 +132,7 @@ func (grp *Group) writeOutputOrPanic(out *Output, traceId string, tx *Transactio
 
 func (grp *Group) processCollectibleOutput(out *CollectibleOutput) {
 	logger.Verbosef("Group.processCollectibleOutput(%v)", out)
-	ver := decodeCollectibleTransaction(out.SignedTx)
+	ver, extra := decodeCollectibleTransactionWithExtra(out.SignedTx)
 	if out.SignedTx != "" && ver == nil {
 		panic(out.SignedTx)
 	}
@@ -141,7 +141,7 @@ func (grp *Group) processCollectibleOutput(out *CollectibleOutput) {
 		return
 	}
 	tx := &CollectibleTransaction{
-		TraceId: nfoTraceId(ver.Extra),
+		TraceId: extra.T.String(),
 		State:   TransactionStateInitial,
 		Raw:     ver.Marshal(),
 		Hash:    ver.PayloadHash(),

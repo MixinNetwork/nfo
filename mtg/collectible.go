@@ -51,7 +51,24 @@ type CollectibleTransaction struct {
 	TokenId   string
 }
 
-func (grp *Group) BuildCollectibleTransaction(ctx context.Context, receivers []string, threshold int, nfo []byte, tokenId, traceId string) error {
+func (grp *Group) BuildCollectibleMintTransaction(ctx context.Context, receivers []string, threshold int, nfo []byte) error {
+	traceId := nfoTraceId(nfo)
+	return grp.buildCollectibleTransaction(ctx, receivers, threshold, nfo, "", traceId)
+}
+
+func (grp *Group) BuildCollectibleTransferTransaction(ctx context.Context, receivers []string, threshold int, memo string, tokenId, traceId string) error {
+	if uuid.FromStringOrNil(tokenId).String() != tokenId {
+		return fmt.Errorf("invalid collectible token id %s", tokenId)
+	}
+	extra := encodeMixinExtra("", traceId, memo)
+	nfo := BuildExtraNFO([]byte(extra))
+	if len(nfo) > common.ExtraSizeLimit {
+		panic(memo)
+	}
+	return grp.buildCollectibleTransaction(ctx, receivers, threshold, nfo, tokenId, traceId)
+}
+
+func (grp *Group) buildCollectibleTransaction(ctx context.Context, receivers []string, threshold int, nfo []byte, tokenId, traceId string) error {
 	if threshold <= 0 || threshold > len(receivers) {
 		return fmt.Errorf("invalid receivers threshold %d/%d", threshold, len(receivers))
 	}
@@ -67,9 +84,6 @@ func (grp *Group) BuildCollectibleTransaction(ctx context.Context, receivers []s
 		return fmt.Errorf("invalid nfo and token combination %x %s", nfo, tokenId)
 	}
 
-	if tokenId == "" {
-		traceId = nfoTraceId(nfo)
-	}
 	if uuid.FromStringOrNil(traceId).String() != traceId {
 		return fmt.Errorf("invalid collectible trace id %s", traceId)
 	}
@@ -176,7 +190,7 @@ func (grp *Group) signCollectibleTransaction(ctx context.Context, tx *Collectibl
 }
 
 func (grp *Group) buildRawCollectibleTransaction(ctx context.Context, tx *CollectibleTransaction, outputs []*CollectibleOutput) (*common.VersionedTransaction, error) {
-	old := decodeCollectibleTransaction(outputs[0].SignedTx)
+	old, _ := decodeCollectibleTransactionWithExtra(outputs[0].SignedTx)
 	if old != nil {
 		return old, nil
 	}
@@ -232,16 +246,24 @@ func (grp *Group) buildRawCollectibleTransaction(ctx context.Context, tx *Collec
 	return ver.AsLatestVersion(), nil
 }
 
-func decodeCollectibleTransaction(s string) *common.VersionedTransaction {
+func decodeCollectibleTransactionWithExtra(s string) (*common.VersionedTransaction, *mixinExtraPack) {
 	raw, err := hex.DecodeString(s)
 	if err != nil {
-		return nil
+		return nil, nil
 	}
 	tx, err := common.UnmarshalVersionedTransaction(raw)
 	if err != nil {
-		return nil
+		return nil, nil
 	}
-	return tx
+	nfm, err := DecodeNFOMemo(tx.Extra)
+	if err != nil {
+		panic(tx.PayloadHash().String())
+	}
+	p := DecodeMixinExtra(string(nfm.Extra))
+	if p == nil {
+		return nil, nil
+	}
+	return tx, p
 }
 
 func nfoTraceId(nfo []byte) string {
