@@ -50,6 +50,7 @@ func (bs *BadgerStore) WriteProperty(key, val []byte) error {
 func (bs *BadgerStore) ReadProperty(key []byte) ([]byte, error) {
 	txn := bs.db.NewTransaction(false)
 	defer txn.Discard()
+
 	item, err := txn.Get(key)
 	if err == badger.ErrKeyNotFound {
 		return nil, nil

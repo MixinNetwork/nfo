@@ -40,7 +40,7 @@ type Transaction struct {
 
 // the app should decide a unique trace id so that the MTG will not double spend
 func (grp *Group) BuildTransaction(ctx context.Context, assetId string, receivers []string, threshold int, amount, memo string, traceId, groupId string) error {
-	return grp.buildTransaction(ctx, assetId, receivers, threshold, amount, memo, traceId, groupId, time.Now())
+	return grp.buildTransaction(ctx, assetId, receivers, threshold, amount, memo, traceId, groupId, grp.clock.Now())
 }
 
 func (grp *Group) buildCompactTransaction(ctx context.Context, source *Transaction, outputs []*Output) error {

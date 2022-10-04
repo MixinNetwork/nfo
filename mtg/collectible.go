@@ -99,7 +99,7 @@ func (grp *Group) buildCollectibleTransaction(ctx context.Context, receivers []s
 		Threshold: threshold,
 		Amount:    "1",
 		NFO:       nfo,
-		UpdatedAt: time.Now(),
+		UpdatedAt: grp.clock.Now(),
 		TokenId:   tokenId,
 	}
 	return grp.store.WriteCollectibleTransaction(tx.TraceId, tx)

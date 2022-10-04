@@ -24,6 +24,7 @@ type Group struct {
 	workers []Worker
 	grouper func(*Output) string
 
+	clock     *Clock
 	id        string
 	members   []string
 	epoch     time.Time
@@ -60,6 +61,12 @@ func BuildGroup(ctx context.Context, store Store, conf *Configuration) (*Group, 
 		pin:   conf.App.PIN,
 		id:    generateGenesisId(conf),
 	}
+
+	clock, err := NewClock(store)
+	if err != nil {
+		return nil, err
+	}
+	grp.clock = clock
 
 	oid, err := store.ReadProperty([]byte(groupGenesisId))
 	if err != nil {
@@ -146,7 +153,7 @@ func (grp *Group) signTransactions(ctx context.Context) error {
 	ver, _ := common.UnmarshalVersionedTransaction(raw)
 	tx.Raw = raw
 	tx.Hash = ver.PayloadHash()
-	tx.UpdatedAt = time.Now()
+	tx.UpdatedAt = grp.clock.Now()
 	tx.State = TransactionStateSigning
 
 	p := DecodeMixinExtra(string(ver.Extra))
@@ -195,7 +202,7 @@ func (grp *Group) signCollectibleTransactions(ctx context.Context) error {
 	ver, _ := common.UnmarshalVersionedTransaction(raw)
 	tx.Raw = raw
 	tx.Hash = ver.PayloadHash()
-	tx.UpdatedAt = time.Now()
+	tx.UpdatedAt = grp.clock.Now()
 	tx.State = TransactionStateSigning
 
 	nfm, err := DecodeNFOMemo(ver.Extra)
