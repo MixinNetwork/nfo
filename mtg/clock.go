@@ -15,11 +15,10 @@ type Clock struct {
 }
 
 func NewClock(store Store) (*Clock, error) {
-	bs, err := store.ReadProperty([]byte(clockStorePropertyKey))
+	ts, err := readPropertyAsTime(store)
 	if err != nil {
 		return nil, err
 	}
-	ts := time.Unix(0, int64(binary.BigEndian.Uint64(bs)))
 	if now := time.Now(); ts.Before(now) {
 		ts = now
 	}
@@ -52,4 +51,12 @@ func (c *Clock) Now() time.Time {
 	}
 
 	return c.now
+}
+
+func readPropertyAsTime(store Store) (time.Time, error) {
+	bs, err := store.ReadProperty([]byte(clockStorePropertyKey))
+	if err != nil || bs == nil {
+		return time.Now(), err
+	}
+	return time.Unix(0, int64(binary.BigEndian.Uint64(bs))), nil
 }
