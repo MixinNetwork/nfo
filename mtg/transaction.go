@@ -151,7 +151,7 @@ func (grp *Group) buildRawTransaction(ctx context.Context, tx *Transaction, outp
 	if old != nil {
 		return old, nil
 	}
-	ver := common.NewTransaction(crypto.NewHash([]byte(tx.AssetId)))
+	ver := common.NewTransactionV2(crypto.NewHash([]byte(tx.AssetId)))
 	ver.Extra = []byte(encodeMixinExtra(tx.GroupId, tx.TraceId, tx.Memo))
 
 	var total common.Integer
@@ -198,7 +198,7 @@ func (grp *Group) buildRawTransaction(ctx context.Context, tx *Transaction, outp
 		ver.Outputs = append(ver.Outputs, newCommonOutput(out))
 	}
 
-	return ver.AsLatestVersion(), nil
+	return ver.AsVersioned(), nil
 }
 
 // all the transactions sent by the MTG is encoded by base64(msgpack(mep))
@@ -230,7 +230,7 @@ func DecodeMixinExtra(memo string) *mixinExtraPack {
 		return nil
 	}
 	var p mixinExtraPack
-	err = common.MsgpackUnmarshal(extra, &p)
+	err = MsgpackUnmarshal(extra, &p)
 	if err != nil || p.T.String() == uuid.Nil.String() {
 		return nil
 	}
@@ -243,7 +243,7 @@ func encodeMixinExtra(groupId, traceId, memo string) string {
 		panic(err)
 	}
 	p := &mixinExtraPack{T: id, G: groupId, M: memo}
-	b := common.MsgpackMarshalPanic(p)
+	b := MsgpackMarshalPanic(p)
 	s := base64.RawURLEncoding.EncodeToString(b)
 	if len(s) >= common.ExtraSizeLimit {
 		panic(memo)

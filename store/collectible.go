@@ -1,7 +1,6 @@
 package store
 
 import (
-	"github.com/MixinNetwork/mixin/common"
 	"github.com/MixinNetwork/mixin/crypto"
 	"github.com/MixinNetwork/nfo/mtg"
 	"github.com/dgraph-io/badger/v3"
@@ -53,7 +52,7 @@ func (bs *BadgerStore) WriteCollectibleTransaction(traceId string, tx *mtg.Colle
 			return err
 		}
 		key := []byte(prefixCollectibleTransactionPayload + tx.TraceId)
-		val := common.MsgpackMarshalPanic(tx)
+		val := mtg.MsgpackMarshalPanic(tx)
 		err = txn.Set(key, val)
 		if err != nil {
 			return err
@@ -161,7 +160,7 @@ func (bs *BadgerStore) writeCollectibleOutput(txn *badger.Txn, utxo *mtg.Collect
 	}
 
 	key := []byte(prefixCollectibleOutputPayload + utxo.OutputId)
-	val := common.MsgpackMarshalPanic(utxo)
+	val := mtg.MsgpackMarshalPanic(utxo)
 	err = txn.Set(key, val)
 	if err != nil {
 		return err
@@ -230,7 +229,7 @@ func (bs *BadgerStore) readCollectibleOutput(txn *badger.Txn, id string) (*mtg.C
 		return nil, err
 	}
 	var utxo mtg.CollectibleOutput
-	err = common.MsgpackUnmarshal(val, &utxo)
+	err = mtg.MsgpackUnmarshal(val, &utxo)
 	return &utxo, err
 }
 
@@ -263,7 +262,7 @@ func (bs *BadgerStore) readCollectibleTransaction(txn *badger.Txn, traceId strin
 		return nil, err
 	}
 	var tx mtg.CollectibleTransaction
-	err = common.MsgpackUnmarshal(val, &tx)
+	err = mtg.MsgpackUnmarshal(val, &tx)
 	return &tx, err
 }
 

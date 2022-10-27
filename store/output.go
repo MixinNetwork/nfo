@@ -1,7 +1,6 @@
 package store
 
 import (
-	"github.com/MixinNetwork/mixin/common"
 	"github.com/MixinNetwork/nfo/mtg"
 	"github.com/dgraph-io/badger/v3"
 )
@@ -73,7 +72,7 @@ func (bs *BadgerStore) writeOutput(txn *badger.Txn, utxo *mtg.Output, traceId st
 	}
 
 	key := []byte(prefixOutputPayload + utxo.UTXOID)
-	val := common.MsgpackMarshalPanic(utxo)
+	val := mtg.MsgpackMarshalPanic(utxo)
 	err = txn.Set(key, val)
 	if err != nil {
 		return err
@@ -130,7 +129,7 @@ func (bs *BadgerStore) readOutput(txn *badger.Txn, id string) (*mtg.Output, erro
 		return nil, err
 	}
 	var utxo mtg.Output
-	err = common.MsgpackUnmarshal(val, &utxo)
+	err = mtg.MsgpackUnmarshal(val, &utxo)
 	return &utxo, err
 }
 

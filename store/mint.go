@@ -3,7 +3,6 @@ package store
 import (
 	"bytes"
 
-	"github.com/MixinNetwork/mixin/common"
 	"github.com/MixinNetwork/nfo/mtg"
 	"github.com/MixinNetwork/nfo/nft"
 	"github.com/dgraph-io/badger/v3"
@@ -40,7 +39,7 @@ func (bs *BadgerStore) WriteMintToken(collection []byte, id []byte, user string)
 		og.Circulation += 1
 
 		key := append([]byte(prefixMintCollectionPayload), collection...)
-		err = txn.Set(key, common.MsgpackMarshalPanic(og))
+		err = txn.Set(key, mtg.MsgpackMarshalPanic(og))
 		if err != nil {
 			return err
 		}
@@ -77,7 +76,7 @@ func (bs *BadgerStore) readMintCollection(txn *badger.Txn, collection []byte) (*
 		return nil, err
 	}
 	var g nft.Collection
-	err = common.MsgpackUnmarshal(val, &g)
+	err = mtg.MsgpackUnmarshal(val, &g)
 	return &g, err
 }
 
