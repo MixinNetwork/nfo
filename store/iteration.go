@@ -1,7 +1,6 @@
 package store
 
 import (
-	"github.com/MixinNetwork/mixin/common"
 	"github.com/MixinNetwork/nfo/mtg"
 	"github.com/dgraph-io/badger/v3"
 )
@@ -46,7 +45,7 @@ func (bs *BadgerStore) WriteIteration(ir *mtg.Iteration) error {
 		if err != nil {
 			return err
 		}
-		val := common.MsgpackMarshalPanic(ir)
+		val := mtg.MsgpackMarshalPanic(ir)
 		key = append([]byte(prefixIterationPayload), ir.NodeId...)
 		return txn.Set(key, val)
 	})
@@ -92,7 +91,7 @@ func (bs *BadgerStore) readIteration(txn *badger.Txn, id string) (*mtg.Iteration
 		return nil, err
 	}
 	var ir mtg.Iteration
-	err = common.MsgpackUnmarshal(val, &ir)
+	err = mtg.MsgpackUnmarshal(val, &ir)
 	return &ir, err
 }
 

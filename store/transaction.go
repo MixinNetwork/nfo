@@ -1,7 +1,6 @@
 package store
 
 import (
-	"github.com/MixinNetwork/mixin/common"
 	"github.com/MixinNetwork/mixin/crypto"
 	"github.com/MixinNetwork/nfo/mtg"
 	"github.com/dgraph-io/badger/v3"
@@ -20,7 +19,7 @@ func (bs *BadgerStore) WriteTransaction(tx *mtg.Transaction) error {
 			return err
 		}
 		key := []byte(prefixTransactionPayload + tx.TraceId)
-		val := common.MsgpackMarshalPanic(tx)
+		val := mtg.MsgpackMarshalPanic(tx)
 		err = txn.Set(key, val)
 		if err != nil {
 			return err
@@ -108,7 +107,7 @@ func (bs *BadgerStore) readTransaction(txn *badger.Txn, traceId string) (*mtg.Tr
 		return nil, err
 	}
 	var tx mtg.Transaction
-	err = common.MsgpackUnmarshal(val, &tx)
+	err = mtg.MsgpackUnmarshal(val, &tx)
 	return &tx, err
 }
 

@@ -202,7 +202,7 @@ func (grp *Group) buildRawCollectibleTransaction(ctx context.Context, tx *Collec
 	if err != nil {
 		panic(err)
 	}
-	ver := common.NewTransaction(assetId)
+	ver := common.NewTransactionV2(assetId)
 	ver.Extra = tx.NFO
 
 	var total common.Integer
@@ -243,7 +243,7 @@ func (grp *Group) buildRawCollectibleTransaction(ctx context.Context, tx *Collec
 		ver.Outputs = append(ver.Outputs, newCommonOutput(out))
 	}
 
-	return ver.AsLatestVersion(), nil
+	return ver.AsVersioned(), nil
 }
 
 func decodeCollectibleTransactionWithExtra(s string) (*common.VersionedTransaction, *mixinExtraPack) {
