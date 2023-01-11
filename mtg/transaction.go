@@ -68,7 +68,7 @@ func (grp *Group) buildTransaction(ctx context.Context, assetId string, receiver
 	}
 
 	// TODO ensure valid memo and trace id
-	encodeMixinExtra(groupId, traceId, memo)
+	EncodeMixinExtra(groupId, traceId, memo)
 
 	for _, r := range receivers {
 		id, _ := uuid.FromString(r)
@@ -152,7 +152,7 @@ func (grp *Group) buildRawTransaction(ctx context.Context, tx *Transaction, outp
 		return old, nil
 	}
 	ver := common.NewTransactionV2(crypto.NewHash([]byte(tx.AssetId)))
-	ver.Extra = []byte(encodeMixinExtra(tx.GroupId, tx.TraceId, tx.Memo))
+	ver.Extra = []byte(EncodeMixinExtra(tx.GroupId, tx.TraceId, tx.Memo))
 
 	var total common.Integer
 	for _, out := range outputs {
@@ -237,7 +237,7 @@ func DecodeMixinExtra(memo string) *mixinExtraPack {
 	return &p
 }
 
-func encodeMixinExtra(groupId, traceId, memo string) string {
+func EncodeMixinExtra(groupId, traceId, memo string) string {
 	id, err := uuid.FromString(traceId)
 	if err != nil {
 		panic(err)

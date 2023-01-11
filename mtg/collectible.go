@@ -60,7 +60,7 @@ func (grp *Group) BuildCollectibleTransferTransaction(ctx context.Context, recei
 	if uuid.FromStringOrNil(tokenId).String() != tokenId {
 		return fmt.Errorf("invalid collectible token id %s", tokenId)
 	}
-	extra := encodeMixinExtra("", traceId, memo)
+	extra := EncodeMixinExtra("", traceId, memo)
 	nfo := BuildExtraNFO([]byte(extra))
 	if len(nfo) > common.ExtraSizeLimit {
 		panic(memo)
