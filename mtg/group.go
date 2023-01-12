@@ -140,11 +140,24 @@ func (grp *Group) Run(ctx context.Context) {
 
 // FIXME sign one transaction per loop, slow
 func (grp *Group) signTransactions(ctx context.Context) error {
-	txs, err := grp.store.ListTransactions(TransactionStateInitial, 1)
-	if err != nil || len(txs) != 1 {
+	txs, err := grp.store.ListTransactions(TransactionStateInitial, 0)
+	if err != nil || len(txs) == 0 {
 		return err
 	}
 	tx := txs[0]
+	for _, ct := range txs {
+		// because we rely on the updated time of outputs, then build
+		// transaction can result in different order, so sign the first
+		// signed transaction by others at first
+		outs, err := grp.store.ListOutputsForTransaction(ct.TraceId)
+		if err != nil {
+			return err
+		}
+		if len(outs) > 0 {
+			tx = ct
+			break
+		}
+	}
 	raw, err := grp.signTransaction(ctx, tx)
 	logger.Verbosef("Group.signTransaction(%v) => %s %v", *tx, hex.EncodeToString(raw), err)
 	if err != nil {
