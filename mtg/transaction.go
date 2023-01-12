@@ -115,7 +115,7 @@ func (grp *Group) signTransaction(ctx context.Context, tx *Transaction) ([]byte,
 		return nil, fmt.Errorf("empty outputs %s", tx.Amount)
 	}
 
-	ver, err := grp.buildRawTransaction(ctx, tx, outputs)
+	ver, outputs, err := grp.buildRawTransaction(ctx, tx, outputs)
 	if err != nil {
 		return nil, err
 	}
@@ -146,27 +146,33 @@ func (grp *Group) signTransaction(ctx context.Context, tx *Transaction) ([]byte,
 	return hex.DecodeString(req.RawTransaction)
 }
 
-func (grp *Group) buildRawTransaction(ctx context.Context, tx *Transaction, outputs []*Output) (*common.VersionedTransaction, error) {
+func (grp *Group) buildRawTransaction(ctx context.Context, tx *Transaction, outputs []*Output) (*common.VersionedTransaction, []*Output, error) {
 	old, _ := decodeTransactionWithExtra(outputs[0].SignedTx)
 	if old != nil {
-		return old, nil
+		return old, nil, nil
 	}
 	ver := common.NewTransactionV2(crypto.NewHash([]byte(tx.AssetId)))
 	ver.Extra = []byte(EncodeMixinExtra(tx.GroupId, tx.TraceId, tx.Memo))
+	target := common.NewIntegerFromString(tx.Amount)
 
 	var total common.Integer
+	var consumed []*Output
 	for _, out := range outputs {
 		total = total.Add(common.NewIntegerFromString(out.Amount.String()))
 		ver.AddInput(crypto.Hash(out.TransactionHash), out.OutputIndex)
+		consumed = append(consumed, out)
+		if total.Cmp(target) >= 0 && len(consumed) >= grp.groupSize {
+			break
+		}
 	}
-	if total.Cmp(common.NewIntegerFromString(tx.Amount)) < 0 {
+	if total.Cmp(target) < 0 {
 		if len(outputs) == OutputsBatchSize {
 			err := grp.buildCompactTransaction(ctx, tx, outputs)
 			if err != nil {
 				panic(err)
 			}
 		}
-		return nil, fmt.Errorf("insufficient %d %s %s", len(outputs), total, tx.Amount)
+		return nil, nil, fmt.Errorf("insufficient %d %s %s", len(outputs), total, tx.Amount)
 	}
 
 	keys, err := grp.mixin.BatchReadGhostKeys(ctx, []*mixin.GhostInput{{
@@ -179,12 +185,12 @@ func (grp *Group) buildRawTransaction(ctx context.Context, tx *Transaction, outp
 		Hint:      tx.TraceId,
 	}})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	amount, err := decimal.NewFromString(tx.Amount)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	out := keys[0].DumpOutput(uint8(tx.Threshold), amount)
 	ver.Outputs = append(ver.Outputs, newCommonOutput(out))
@@ -192,13 +198,13 @@ func (grp *Group) buildRawTransaction(ctx context.Context, tx *Transaction, outp
 	if diff := total.Sub(common.NewIntegerFromString(tx.Amount)); diff.Sign() > 0 {
 		amount, err := decimal.NewFromString(diff.String())
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		out := keys[1].DumpOutput(uint8(grp.threshold), amount)
 		ver.Outputs = append(ver.Outputs, newCommonOutput(out))
 	}
 
-	return ver.AsVersioned(), nil
+	return ver.AsVersioned(), consumed, nil
 }
 
 // all the transactions sent by the MTG is encoded by base64(msgpack(mep))

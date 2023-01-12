@@ -19,10 +19,11 @@ const (
 )
 
 type Group struct {
-	mixin   *mixin.Client
-	store   Store
-	workers []Worker
-	grouper func(*Output) string
+	mixin     *mixin.Client
+	store     Store
+	workers   []Worker
+	grouper   func(*Output) string
+	groupSize int
 
 	clock     *Clock
 	id        string
@@ -56,10 +57,14 @@ func BuildGroup(ctx context.Context, store Store, conf *Configuration) (*Group, 
 	}
 
 	grp := &Group{
-		mixin: client,
-		store: store,
-		pin:   conf.App.PIN,
-		id:    generateGenesisId(conf),
+		mixin:     client,
+		store:     store,
+		pin:       conf.App.PIN,
+		id:        generateGenesisId(conf),
+		groupSize: conf.GroupSize,
+	}
+	if grp.groupSize <= 0 {
+		grp.groupSize = OutputsBatchSize
 	}
 
 	clock, err := NewClock(store)

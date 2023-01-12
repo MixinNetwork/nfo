@@ -1,3 +1,5 @@
+group-size = 1
+
 [genesis]
 members = [
   "4b188942-9fb0-4b99-b4be-e741a06d1ebf",
