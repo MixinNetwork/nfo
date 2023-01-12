@@ -84,13 +84,19 @@ func (grp *Group) processMultisigOutput(out *Output) {
 	if out.SignedTx != "" && ver == nil {
 		panic(out.SignedTx)
 	}
+	var groupId, traceId string
+	if extra != nil {
+		groupId, traceId = extra.G, extra.T.String()
+	}
+	// FIXME get trace id from other members could break the consensus
+	// this in theory won't affect asset security though
 	if out.State == OutputStateUnspent || ver.AggregatedSignature == nil {
-		grp.writeOutputOrPanic(out, "")
+		grp.writeOutputOrPanic(out, traceId)
 		return
 	}
 	tx := &Transaction{
-		GroupId: extra.G,
-		TraceId: extra.T.String(),
+		GroupId: groupId,
+		TraceId: traceId,
 		State:   TransactionStateSigned,
 		Raw:     ver.Marshal(),
 		Hash:    ver.PayloadHash(),
