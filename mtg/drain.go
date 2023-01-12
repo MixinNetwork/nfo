@@ -84,40 +84,22 @@ func (grp *Group) processMultisigOutput(out *Output) {
 	if out.SignedTx != "" && ver == nil {
 		panic(out.SignedTx)
 	}
-	if out.State == OutputStateUnspent {
-		grp.writeOutputOrPanic(out, "", nil)
+	if out.State == OutputStateUnspent || ver.AggregatedSignature == nil {
+		grp.writeOutputOrPanic(out, "")
 		return
 	}
 	tx := &Transaction{
 		GroupId: extra.G,
 		TraceId: extra.T.String(),
-		State:   TransactionStateInitial,
+		State:   TransactionStateSigned,
 		Raw:     ver.Marshal(),
 		Hash:    ver.PayloadHash(),
 	}
-	if ver.AggregatedSignature != nil {
-		out.State = OutputStateSpent
-		tx.State = TransactionStateSigned
-	}
-	grp.writeOutputOrPanic(out, tx.TraceId, tx)
-}
 
-func (grp *Group) writeOutputOrPanic(out *Output, traceId string, tx *Transaction) {
-	p := DecodeMixinExtra(out.Memo)
-	if p != nil && p.G != "" {
-		out.GroupId = p.G
-	} else if grp.grouper != nil {
-		out.GroupId = grp.grouper(out)
-	}
-	logger.Verbosef("Group.writeOutputOrPanic(%v, %s, %v)", out, traceId, tx)
-	err := grp.store.WriteOutput(out, traceId)
-	if err != nil {
-		panic(err)
-	}
-	if traceId == "" {
-		return
-	}
-	old, err := grp.store.ReadTransactionByTraceId(traceId)
+	out.State = OutputStateSpent
+	grp.writeOutputOrPanic(out, tx.TraceId)
+
+	old, err := grp.store.ReadTransactionByTraceId(tx.TraceId)
 	if err != nil {
 		panic(err)
 	}
@@ -125,6 +107,20 @@ func (grp *Group) writeOutputOrPanic(out *Output, traceId string, tx *Transactio
 		return
 	}
 	err = grp.store.WriteTransaction(tx)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (grp *Group) writeOutputOrPanic(out *Output, traceId string) {
+	p := DecodeMixinExtra(out.Memo)
+	if p != nil && p.G != "" {
+		out.GroupId = p.G
+	} else if grp.grouper != nil {
+		out.GroupId = grp.grouper(out)
+	}
+	logger.Verbosef("Group.writeOutputOrPanic(%v, %s)", out, traceId)
+	err := grp.store.WriteOutput(out, traceId)
 	if err != nil {
 		panic(err)
 	}
