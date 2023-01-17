@@ -14,14 +14,14 @@ const (
 	outputsDrainingKey = "outputs-draining-checkpoint"
 )
 
-func (grp *Group) drainOutputsFromNetwork(ctx context.Context, filter map[string]bool, batch int) {
+func (grp *Group) drainOutputsFromNetwork(ctx context.Context, filter map[string]bool, batch int, order string) {
 	for {
 		checkpoint, err := grp.readDrainingCheckpoint(ctx, outputsDrainingKey)
 		if err != nil {
 			time.Sleep(3 * time.Second)
 			continue
 		}
-		outputs, err := grp.ReadUnifiedOutputs(ctx, grp.members, uint8(grp.threshold), checkpoint, batch)
+		outputs, err := grp.ReadUnifiedOutputs(ctx, grp.members, uint8(grp.threshold), checkpoint, batch, order)
 		if err != nil {
 			time.Sleep(3 * time.Second)
 			continue
@@ -194,13 +194,16 @@ func (grp *Group) writeDrainingCheckpoint(ctx context.Context, key string, ckpt 
 	return grp.store.WriteProperty([]byte(key), val)
 }
 
-func (grp *Group) ReadUnifiedOutputs(ctx context.Context, members []string, threshold uint8, offset time.Time, limit int) ([]*UnifiedOutput, error) {
+func (grp *Group) ReadUnifiedOutputs(ctx context.Context, members []string, threshold uint8, offset time.Time, limit int, order string) ([]*UnifiedOutput, error) {
 	params := make(map[string]string)
 	if !offset.IsZero() {
 		params["offset"] = offset.UTC().Format(time.RFC3339Nano)
 	}
 	if limit > 0 {
 		params["limit"] = fmt.Sprint(limit)
+	}
+	if order == "created" || order == "updated" {
+		params["order"] = order
 	}
 	if threshold < 1 || int(threshold) > len(members) {
 		return nil, fmt.Errorf("invalid members %v %d", members, threshold)

@@ -126,8 +126,9 @@ func (grp *Group) Run(ctx context.Context) {
 	logger.Printf("Group(%s, %d, %s).Run(v0.1.4)\n", mixin.HashMembers(grp.members), grp.threshold, grp.GenesisId())
 	filter := make(map[string]bool)
 	for {
-		// drain all the utxos in the order of updated time
-		grp.drainOutputsFromNetwork(ctx, filter, 500)
+		// drain all the utxos in the order of created time
+		grp.drainOutputsFromNetwork(ctx, filter, 500, "created")
+		grp.drainOutputsFromNetwork(ctx, filter, 500, "updated")
 
 		// handle the utxos queue by created time
 		grp.handleActionsQueue(ctx)
