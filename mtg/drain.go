@@ -11,17 +11,23 @@ import (
 )
 
 const (
-	outputsDrainingKey = "outputs-draining-checkpoint"
+	outputsOrderCreated = "created"
+	outputsOrderUpdated = "updated"
+	outputsDrainingKey  = "outputs-draining-checkpoint"
 )
 
 func (grp *Group) drainOutputsFromNetwork(ctx context.Context, filter map[string]bool, batch int, order string) {
+	if order != outputsOrderCreated && order != outputsOrderUpdated {
+		panic(order)
+	}
+
 	for {
 		checkpoint, err := grp.readDrainingCheckpoint(ctx, order)
 		if err != nil {
 			time.Sleep(3 * time.Second)
 			continue
 		}
-		outputs, err := grp.ReadUnifiedOutputs(ctx, grp.members, uint8(grp.threshold), checkpoint, batch, order)
+		outputs, err := grp.readUnifiedOutputs(ctx, grp.members, uint8(grp.threshold), checkpoint, batch, order)
 		if err != nil {
 			time.Sleep(3 * time.Second)
 			continue
@@ -37,7 +43,7 @@ func (grp *Group) drainOutputsFromNetwork(ctx context.Context, filter map[string
 
 func (grp *Group) processUnifiedOutputs(filter map[string]bool, checkpoint time.Time, outputs []*UnifiedOutput, order string) time.Time {
 	for _, out := range outputs {
-		if order == "created" {
+		if order == outputsOrderCreated {
 			checkpoint = out.CreatedAt
 		} else {
 			checkpoint = out.UpdatedAt
@@ -200,7 +206,7 @@ func (grp *Group) writeDrainingCheckpoint(ctx context.Context, order string, ckp
 	return grp.store.WriteProperty([]byte(key), val)
 }
 
-func (grp *Group) ReadUnifiedOutputs(ctx context.Context, members []string, threshold uint8, offset time.Time, limit int, order string) ([]*UnifiedOutput, error) {
+func (grp *Group) readUnifiedOutputs(ctx context.Context, members []string, threshold uint8, offset time.Time, limit int, order string) ([]*UnifiedOutput, error) {
 	params := make(map[string]string)
 	if !offset.IsZero() {
 		params["offset"] = offset.UTC().Format(time.RFC3339Nano)
@@ -208,7 +214,7 @@ func (grp *Group) ReadUnifiedOutputs(ctx context.Context, members []string, thre
 	if limit > 0 {
 		params["limit"] = fmt.Sprint(limit)
 	}
-	if order == "created" || order == "updated" {
+	if order == outputsOrderCreated || order == outputsOrderUpdated {
 		params["order"] = order
 	}
 	if threshold < 1 || int(threshold) > len(members) {
