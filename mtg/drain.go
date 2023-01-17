@@ -16,8 +16,7 @@ const (
 
 func (grp *Group) drainOutputsFromNetwork(ctx context.Context, filter map[string]bool, batch int, order string) {
 	for {
-		offKey := fmt.Sprintf("%s-by-%s", outputsDrainingKey, order)
-		checkpoint, err := grp.readDrainingCheckpoint(ctx, offKey)
+		checkpoint, err := grp.readDrainingCheckpoint(ctx, order)
 		if err != nil {
 			time.Sleep(3 * time.Second)
 			continue
@@ -28,17 +27,21 @@ func (grp *Group) drainOutputsFromNetwork(ctx context.Context, filter map[string
 			continue
 		}
 
-		checkpoint = grp.processUnifiedOutputs(filter, checkpoint, outputs)
-		grp.writeDrainingCheckpoint(ctx, outputsDrainingKey, checkpoint)
+		checkpoint = grp.processUnifiedOutputs(filter, checkpoint, outputs, order)
+		grp.writeDrainingCheckpoint(ctx, order, checkpoint)
 		if len(outputs) < batch/2 {
 			break
 		}
 	}
 }
 
-func (grp *Group) processUnifiedOutputs(filter map[string]bool, checkpoint time.Time, outputs []*UnifiedOutput) time.Time {
+func (grp *Group) processUnifiedOutputs(filter map[string]bool, checkpoint time.Time, outputs []*UnifiedOutput, order string) time.Time {
 	for _, out := range outputs {
-		checkpoint = out.UpdatedAt
+		if order == "created" {
+			checkpoint = out.CreatedAt
+		} else {
+			checkpoint = out.UpdatedAt
+		}
 		key := fmt.Sprintf("OUT:%s:%d", out.UniqueId(), out.UpdatedAt.UnixNano())
 		if filter[key] || out.UpdatedAt.Before(grp.epoch) {
 			continue
@@ -179,7 +182,8 @@ func (grp *Group) writeCollectibleOutputOrPanic(out *CollectibleOutput, traceId 
 	}
 }
 
-func (grp *Group) readDrainingCheckpoint(ctx context.Context, key string) (time.Time, error) {
+func (grp *Group) readDrainingCheckpoint(ctx context.Context, order string) (time.Time, error) {
+	key := fmt.Sprintf("%s-by-%s", outputsDrainingKey, order)
 	val, err := grp.store.ReadProperty([]byte(key))
 	if err != nil || len(val) == 0 {
 		return grp.epoch, err
@@ -188,10 +192,11 @@ func (grp *Group) readDrainingCheckpoint(ctx context.Context, key string) (time.
 	return time.Unix(0, ts), nil
 }
 
-func (grp *Group) writeDrainingCheckpoint(ctx context.Context, key string, ckpt time.Time) error {
+func (grp *Group) writeDrainingCheckpoint(ctx context.Context, order string, ckpt time.Time) error {
 	val := make([]byte, 8)
 	ts := uint64(ckpt.UnixNano())
 	binary.BigEndian.PutUint64(val, ts)
+	key := fmt.Sprintf("%s-by-%s", outputsDrainingKey, order)
 	return grp.store.WriteProperty([]byte(key), val)
 }
 
