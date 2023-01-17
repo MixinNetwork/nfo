@@ -143,6 +143,10 @@ func (grp *Group) Run(ctx context.Context) {
 	}
 }
 
+func (grp *Group) ListOutputsForAsset(groupId, assetId, state string, limit int) ([]*Output, error) {
+	return grp.store.ListOutputsForAsset(groupId, state, assetId, limit)
+}
+
 // FIXME sign one transaction per loop, slow
 func (grp *Group) signTransactions(ctx context.Context) error {
 	txs, err := grp.store.ListTransactions(TransactionStateInitial, 0)
