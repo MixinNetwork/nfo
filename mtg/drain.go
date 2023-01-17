@@ -16,7 +16,8 @@ const (
 
 func (grp *Group) drainOutputsFromNetwork(ctx context.Context, filter map[string]bool, batch int, order string) {
 	for {
-		checkpoint, err := grp.readDrainingCheckpoint(ctx, outputsDrainingKey)
+		offKey := fmt.Sprintf("%s-by-%s", outputsDrainingKey, order)
+		checkpoint, err := grp.readDrainingCheckpoint(ctx, offKey)
 		if err != nil {
 			time.Sleep(3 * time.Second)
 			continue
