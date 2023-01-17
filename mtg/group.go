@@ -123,7 +123,7 @@ func (grp *Group) AddWorker(wkr Worker) {
 }
 
 func (grp *Group) Run(ctx context.Context) {
-	logger.Printf("Group(%s, %d, %s).Run(v0.2.0)\n", mixin.HashMembers(grp.members), grp.threshold, grp.GenesisId())
+	logger.Printf("Group(%s, %d, %s).Run(v0.2.1)\n", mixin.HashMembers(grp.members), grp.threshold, grp.GenesisId())
 	filter := make(map[string]bool)
 	for {
 		// drain all the utxos in the order of created time
