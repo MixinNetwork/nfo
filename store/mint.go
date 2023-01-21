@@ -3,7 +3,7 @@ package store
 import (
 	"bytes"
 
-	"github.com/MixinNetwork/nfo/mtg"
+	"github.com/MixinNetwork/trusted-group/mtg"
 	"github.com/MixinNetwork/nfo/nft"
 	"github.com/dgraph-io/badger/v3"
 )

@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/MixinNetwork/mixin/logger"
-	"github.com/MixinNetwork/nfo/mtg"
+	"github.com/MixinNetwork/trusted-group/mtg"
 	"github.com/MixinNetwork/nfo/nft"
 	"github.com/MixinNetwork/nfo/store"
 )

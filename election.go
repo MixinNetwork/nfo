@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 
-	"github.com/MixinNetwork/nfo/mtg"
+	"github.com/MixinNetwork/trusted-group/mtg"
 )
 
 type ElectionWorker struct {

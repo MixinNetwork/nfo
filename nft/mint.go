@@ -7,7 +7,7 @@ import (
 	"encoding/hex"
 
 	"github.com/MixinNetwork/mixin/logger"
-	"github.com/MixinNetwork/nfo/mtg"
+	"github.com/MixinNetwork/trusted-group/mtg"
 	"github.com/gofrs/uuid"
 	"github.com/shopspring/decimal"
 )

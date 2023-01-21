@@ -2,7 +2,7 @@ package store
 
 import (
 	"github.com/MixinNetwork/mixin/crypto"
-	"github.com/MixinNetwork/nfo/mtg"
+	"github.com/MixinNetwork/trusted-group/mtg"
 	"github.com/dgraph-io/badger/v3"
 )
 
