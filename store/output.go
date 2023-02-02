@@ -52,8 +52,9 @@ func (bs *BadgerStore) listOutputs(prefix string, limit int) ([]*mtg.Output, err
 	var outputs []*mtg.Output
 	for it.Seek(opts.Prefix); it.Valid(); it.Next() {
 		key := it.Item().Key()
-		// asset with different group id
-		if len(key) != len(opts.Prefix)+36 {
+		// asset list may have different group id
+		// prefix + (group id) + timestamp + uuid
+		if len(key) != len(opts.Prefix)+8+36 {
 			continue
 		}
 		id := string(key[len(opts.Prefix)+8:])
