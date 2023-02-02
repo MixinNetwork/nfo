@@ -52,6 +52,10 @@ func (bs *BadgerStore) listOutputs(prefix string, limit int) ([]*mtg.Output, err
 	var outputs []*mtg.Output
 	for it.Seek(opts.Prefix); it.Valid(); it.Next() {
 		key := it.Item().Key()
+		// asset with different group id
+		if len(key) != len(opts.Prefix)+36 {
+			continue
+		}
 		id := string(key[len(opts.Prefix)+8:])
 		out, err := bs.readOutput(txn, id)
 		if err != nil {
