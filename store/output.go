@@ -104,10 +104,13 @@ func (bs *BadgerStore) resetOldOutput(txn *badger.Txn, utxo *mtg.Output, traceId
 	if old.State == utxo.State {
 		return old, nil
 	}
-	if old.State > utxo.State {
-		panic(old.State)
-	}
-	if old.SignedBy != "" && old.SignedBy != utxo.SignedBy {
+	switch {
+	case old.State == utxo.State:
+		return old, nil
+	case old.State == mtg.OutputStateSigned && utxo.State == mtg.OutputStateUnspent:
+	case old.State > utxo.State:
+		panic(old.UTXOID)
+	case old.SignedBy != "" && old.SignedBy != utxo.SignedBy:
 		panic(old.SignedBy)
 	}
 
