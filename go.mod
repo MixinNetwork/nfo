@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/MixinNetwork/mixin v0.14.18
-	github.com/MixinNetwork/trusted-group v0.3.0
+	github.com/MixinNetwork/trusted-group v0.4.0
 	github.com/dgraph-io/badger/v3 v3.2103.5
 	github.com/fox-one/mixin-sdk-go v1.7.2
 	github.com/gofrs/uuid v4.3.1+incompatible
