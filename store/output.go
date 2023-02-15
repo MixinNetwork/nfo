@@ -142,7 +142,7 @@ func (bs *BadgerStore) readOutput(txn *badger.Txn, id string) (*mtg.Output, erro
 }
 
 func buildOutputTimedKey(out *mtg.Output, prefix string, traceId string) []byte {
-	buf := tsToBytes(out.UpdatedAt)
+	buf := tsToBytes(out.CreatedAt)
 	switch prefix {
 	case prefixOutputGroupAsset:
 		prefix = prefix + out.StateName() + out.AssetID + out.GroupId

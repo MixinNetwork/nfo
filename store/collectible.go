@@ -234,7 +234,7 @@ func (bs *BadgerStore) readCollectibleOutput(txn *badger.Txn, id string) (*mtg.C
 }
 
 func buildCollectibleOutputTimedKey(out *mtg.CollectibleOutput, prefix string, traceId string) []byte {
-	buf := tsToBytes(out.UpdatedAt)
+	buf := tsToBytes(out.CreatedAt)
 	switch prefix {
 	case prefixCollectibleOutputState:
 		prefix = prefix + out.StateName()
