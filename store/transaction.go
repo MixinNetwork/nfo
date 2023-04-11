@@ -1,6 +1,8 @@
 package store
 
 import (
+	"bytes"
+
 	"github.com/MixinNetwork/mixin/crypto"
 	"github.com/MixinNetwork/trusted-group/mtg"
 	"github.com/dgraph-io/badger/v3"
@@ -116,8 +118,14 @@ func (bs *BadgerStore) resetOldTransaction(txn *badger.Txn, tx *mtg.Transaction)
 	if err != nil || old == nil {
 		return old, err
 	}
-	if old.State >= tx.State {
+	switch {
+	case old.State == tx.State:
 		return old, nil
+	case old.State == mtg.TransactionStateSigning && tx.State == mtg.TransactionStateInitial:
+	case old.State > tx.State:
+		panic(old.TraceId)
+	case old.Raw != nil && !bytes.Equal(old.Raw, tx.Raw):
+		panic(old.Hash.String())
 	}
 
 	key := buildTransactionTimedKey(old)
