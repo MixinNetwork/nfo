@@ -29,6 +29,17 @@ func (bs *BadgerStore) WriteOutputs(utxos []*mtg.Output, traceId string) error {
 	})
 }
 
+func (bs *BadgerStore) WriteOutputTraceId(utxo *mtg.Output, traceId string) error {
+	if traceId == "" {
+		panic(utxo.UTXOID)
+	}
+
+	return bs.db.Update(func(txn *badger.Txn) error {
+		key := buildOutputTimedKey(utxo, prefixOutputTransaction, traceId)
+		return txn.Set(key, []byte{1})
+	})
+}
+
 func (bs *BadgerStore) ListOutputsForTransaction(traceId string) ([]*mtg.Output, error) {
 	prefix := prefixOutputTransaction + traceId
 	return bs.listOutputs(prefix, 0)
