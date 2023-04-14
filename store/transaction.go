@@ -122,6 +122,10 @@ func (bs *BadgerStore) resetOldTransaction(txn *badger.Txn, tx *mtg.Transaction)
 	case old.State == tx.State:
 		return old, nil
 	case old.State == mtg.TransactionStateSigning && tx.State == mtg.TransactionStateInitial:
+		err := bs.resetTransactionOutputs(txn, tx.TraceId)
+		if err != nil {
+			return nil, err
+		}
 	case old.State > tx.State:
 		panic(old.TraceId)
 	case old.Raw != nil && !bytes.Equal(old.Raw, tx.Raw):
@@ -134,6 +138,28 @@ func (bs *BadgerStore) resetOldTransaction(txn *badger.Txn, tx *mtg.Transaction)
 		panic(key)
 	}
 	return nil, txn.Delete(key)
+}
+
+func (bs *BadgerStore) resetTransactionOutputs(txn *badger.Txn, traceId string) error {
+	opts := badger.DefaultIteratorOptions
+	opts.PrefetchValues = false
+	opts.Prefix = []byte(prefixOutputTransaction + traceId)
+	it := txn.NewIterator(opts)
+	defer it.Close()
+
+	for it.Seek(opts.Prefix); it.Valid(); it.Next() {
+		key := it.Item().Key()
+		// asset list may have different group id
+		// prefix + (group id) + timestamp + uuid
+		if len(key) != len(opts.Prefix)+8+36 {
+			continue
+		}
+		err := txn.Delete(key)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func buildTransactionTimedKey(tx *mtg.Transaction) []byte {
