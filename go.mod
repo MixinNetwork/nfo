@@ -4,9 +4,9 @@ go 1.20
 
 require (
 	github.com/MixinNetwork/mixin v0.15.0
-	github.com/MixinNetwork/trusted-group v0.4.4
+	github.com/MixinNetwork/trusted-group v0.4.7
 	github.com/dgraph-io/badger/v3 v3.2103.5
-	github.com/fox-one/mixin-sdk-go v1.7.6
+	github.com/fox-one/mixin-sdk-go v1.7.8
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/shopspring/decimal v1.3.1
 )
