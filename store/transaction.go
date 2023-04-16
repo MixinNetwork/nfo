@@ -121,11 +121,12 @@ func (bs *BadgerStore) readTransactionTraceId(txn *badger.Txn, hash string) (str
 func (bs *BadgerStore) resetOldTransaction(txn *badger.Txn, tx *mtg.Transaction) (*mtg.Transaction, error) {
 	old, err := bs.readTransaction(txn, tx.TraceId)
 	if err != nil || old == nil {
-		return old, err
+		return nil, err
 	}
 	switch {
-	case old.State == tx.State:
+	case old.State == tx.State && old.Hash == tx.Hash:
 		return old, nil
+	case tx.State > old.State:
 	case old.State == mtg.TransactionStateSigning && tx.State == mtg.TransactionStateInitial:
 		err := bs.resetTransactionOutputs(txn, tx.TraceId)
 		if err != nil {
