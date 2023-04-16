@@ -29,17 +29,6 @@ func (bs *BadgerStore) WriteOutputs(utxos []*mtg.Output, traceId string) error {
 	})
 }
 
-func (bs *BadgerStore) WriteOutputTraceId(utxo *mtg.Output, traceId string) error {
-	if traceId == "" {
-		panic(utxo.UTXOID)
-	}
-
-	return bs.db.Update(func(txn *badger.Txn) error {
-		key := buildOutputTimedKey(utxo, prefixOutputTransaction, traceId)
-		return txn.Set(key, []byte{1})
-	})
-}
-
 func (bs *BadgerStore) ListOutputsForTransaction(traceId string) ([]*mtg.Output, error) {
 	prefix := prefixOutputTransaction + traceId
 	return bs.listOutputs(prefix, 0)
@@ -94,7 +83,7 @@ func (bs *BadgerStore) writeOutput(txn *badger.Txn, utxo *mtg.Output, traceId st
 		return err
 	}
 
-	key = buildOutputTimedKey(utxo, prefixOutputGroupAsset, traceId)
+	key = buildOutputTimedKey(utxo, prefixOutputGroupAsset, "")
 	err = txn.Set(key, []byte{1})
 	if err != nil {
 		return err
@@ -110,27 +99,40 @@ func (bs *BadgerStore) writeOutput(txn *badger.Txn, utxo *mtg.Output, traceId st
 func (bs *BadgerStore) resetOldOutput(txn *badger.Txn, utxo *mtg.Output, traceId string) (*mtg.Output, error) {
 	old, err := bs.readOutput(txn, utxo.UTXOID)
 	if err != nil || old == nil {
-		return old, err
-	}
-	if old.State == utxo.State {
-		return old, nil
+		return nil, err
 	}
 	switch {
-	case old.State == utxo.State:
-		return old, nil
 	case old.State == mtg.OutputStateSigned && utxo.State == mtg.OutputStateUnspent:
+	case utxo.State == mtg.OutputStateSpent && utxo.State > old.State:
+	case old.State == utxo.State && old.SignedTx == utxo.SignedTx:
+		return old, nil
+	case old.State == utxo.State && old.SignedTx != utxo.SignedTx:
 	case old.State > utxo.State:
 		panic(old.UTXOID)
 	case old.SignedBy != "" && old.SignedBy != utxo.SignedBy:
 		panic(old.SignedBy)
 	}
 
-	key := buildOutputTimedKey(old, prefixOutputGroupAsset, traceId)
+	key := buildOutputTimedKey(old, prefixOutputGroupAsset, "")
 	err = txn.Delete(key)
 	if err != nil {
 		return nil, err
 	}
 
+	if traceId != "" {
+		key = buildOutputTimedKey(old, prefixOutputTransaction, traceId)
+		err = txn.Delete(key)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if old.SignedBy == "" {
+		return nil, nil
+	}
+	traceId, err = bs.readTransactionTraceId(txn, old.SignedBy)
+	if err != nil || traceId == "" {
+		return nil, err
+	}
 	key = buildOutputTimedKey(old, prefixOutputTransaction, traceId)
 	return nil, txn.Delete(key)
 }

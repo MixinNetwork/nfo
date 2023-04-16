@@ -53,19 +53,11 @@ func (bs *BadgerStore) ReadTransactionByHash(hash crypto.Hash) (*mtg.Transaction
 	txn := bs.db.NewTransaction(false)
 	defer txn.Discard()
 
-	key := append([]byte(prefixTransactionHash), hash[:]...)
-	item, err := txn.Get(key)
-	if err == badger.ErrKeyNotFound {
-		return nil, nil
-	} else if err != nil {
+	traceId, err := bs.readTransactionTraceId(txn, hash.String())
+	if err != nil || traceId == "" {
 		return nil, err
 	}
-	traceId, err := item.ValueCopy(nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return bs.readTransaction(txn, string(traceId))
+	return bs.readTransaction(txn, traceId)
 }
 
 func (bs *BadgerStore) ListTransactions(state int, limit int) ([]*mtg.Transaction, error) {
@@ -109,6 +101,21 @@ func (bs *BadgerStore) readTransaction(txn *badger.Txn, traceId string) (*mtg.Tr
 	var tx mtg.Transaction
 	err = mtg.MsgpackUnmarshal(val, &tx)
 	return &tx, err
+}
+
+func (bs *BadgerStore) readTransactionTraceId(txn *badger.Txn, hash string) (string, error) {
+	key := append([]byte(prefixTransactionHash), hash[:]...)
+	item, err := txn.Get(key)
+	if err == badger.ErrKeyNotFound {
+		return "", nil
+	} else if err != nil {
+		return "", err
+	}
+	traceId, err := item.ValueCopy(nil)
+	if err != nil {
+		return "", err
+	}
+	return string(traceId), nil
 }
 
 func (bs *BadgerStore) resetOldTransaction(txn *badger.Txn, tx *mtg.Transaction) (*mtg.Transaction, error) {
