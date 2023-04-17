@@ -42,6 +42,24 @@ func (bs *BadgerStore) WriteTransaction(tx *mtg.Transaction) error {
 	})
 }
 
+func (bs *BadgerStore) DeleteTransaction(old *mtg.Transaction) error {
+	return bs.db.Update(func(txn *badger.Txn) error {
+		err := bs.resetTransactionOutputs(txn, old.TraceId)
+		if err != nil {
+			return err
+		}
+
+		key := []byte(prefixTransactionPayload + old.TraceId)
+		err = txn.Delete(key)
+		if err != nil {
+			return err
+		}
+
+		key = buildTransactionTimedKey(old)
+		return txn.Delete(key)
+	})
+}
+
 func (bs *BadgerStore) ReadTransactionByTraceId(traceId string) (*mtg.Transaction, error) {
 	txn := bs.db.NewTransaction(false)
 	defer txn.Discard()
