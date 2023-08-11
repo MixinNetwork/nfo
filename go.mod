@@ -6,7 +6,7 @@ replace github.com/dgraph-io/badger/v4 => github.com/MixinNetwork/badger/v4 v4.2
 
 require (
 	github.com/MixinNetwork/mixin v0.16.1
-	github.com/MixinNetwork/trusted-group v0.5.3
+	github.com/MixinNetwork/trusted-group v0.5.4
 	github.com/dgraph-io/badger/v4 v4.2.0
 	github.com/fox-one/mixin-sdk-go v1.7.11
 	github.com/gofrs/uuid v4.4.0+incompatible
